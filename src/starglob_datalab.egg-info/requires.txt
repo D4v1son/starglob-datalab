@@ -1,0 +1,10 @@
+pandas
+faker
+pyyaml
+pydantic
+streamlit
+plotly
+
+[dev]
+pytest
+coverage

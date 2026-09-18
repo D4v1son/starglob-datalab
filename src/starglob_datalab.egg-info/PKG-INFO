@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: starglob-datalab
+Version: 0.1.0
+Summary: Generador y auditor de datos sintéticos para pruebas de software
+Requires-Python: >=3.10
+Requires-Dist: pandas
+Requires-Dist: faker
+Requires-Dist: pyyaml
+Requires-Dist: pydantic
+Requires-Dist: streamlit
+Requires-Dist: plotly
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: coverage; extra == "dev"
