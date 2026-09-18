@@ -20,8 +20,7 @@ Configuración → Generador → Inyector → Auditor → Evaluador → Persiste
 - **cli.py**: comandos `generate`, `audit`, `evaluate`.
 
 ### Modelos de datos
-Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguridad). Ambas requieren identificadores únicos reproducibles por semilla y relaciones temporales coherentes (p. ej. `closed_at` posterior
-a `created_at`).
+Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguridad). Ambas requieren identificadores únicos reproducibles por semilla y relaciones temporales coherentes (p. ej. `closed_at` posterior a `created_at`). Como parte de la documentación hay un [catálogo](./docs/diccionario_datos.md) con el schema de los datos representados visualmente.
 
 ### Backlog (siguiendo la planificación de 75h)
 - **Semana 1**: configuración + generador de ambas plantillas + reproducibilidad

@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "starglob-datalab"
 version = "0.1.0"
 description = "Generador y auditor de datos sintéticos para pruebas de software"
@@ -14,3 +14,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "coverage"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

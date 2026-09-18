@@ -4,10 +4,12 @@ Los definimos con la librería de pydantic, que es muy estricta.
 Cuando desarrolle la parte de 'inyectar anomalias' lo ideal es montar los datos con dataframes de pandas.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, field_validator, model_validator
+
+TOLERANCIA_INICIO = timedelta(minutes=15)
 
 SLA_BY_PRIORITY = {"critical": 60, "high": 240, "medium": 1440, "low": 4320}
 
@@ -74,4 +76,49 @@ class Ticket(BaseModel):
         expected_sla = SLA_BY_PRIORITY[self.priority.value]
         if self.sla_target_minutes != expected_sla: # incluso si llegamos a signar el tiempo de espera de forma automática, necesitamos poder comprobarlo para las auditorías
             raise ValueError(f"sla_target_minutes debe ser {expected_sla} para priority={self.priority}")
+        return self
+    
+
+class BackupSourceSystem(str, Enum):
+    FILESYSTEM = "filesystem"
+    DATABASE = "database"
+    VIRTUAL_MACHINE = "virtual_machine"
+    APPLICATION = "application"
+    
+class BackupStatus(str, Enum):
+    SUCCESS = "success"
+    WARNING = "warning"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    RUNNING = "running"
+
+class BackupJob(BaseModel):
+    backup_id: str
+    client_id: str
+    job_name: str
+    source_system: BackupSourceSystem
+    scheduled_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    status: BackupStatus
+    bytes_processed: Optional[int] = None
+    files_processed: Optional[int] = None
+    checksum_verified: Optional[int] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    
+    @model_validator(mode="after")
+    def check_dependencies(self):
+        if self.started_at:
+            if self.started_at < self.scheduled_at:
+                raise ValueError("started_at no puede ser anterior a scheduled_at")
+            if self.started_at > self.scheduled_at + TOLERANCIA_INICIO:
+                raise ValueError("started_at supera la tolerancia de 15 min sobre scheduled_at")
+        if self.finished_at and self.started_at and self.finished_at <= self.started_at:
+            raise ValueError("finished_at debe ser posterior a started_at")
+        if self.status == BackupStatus.SUCCESS:
+            if self.bytes_processed is None or self.files_processed is None:
+                raise ValueError("bytes_processed y files_processed son obligatorios si status=success")
+        if self.status in (BackupStatus.FAILED, BackupStatus.CANCELLED) and self.error_code is None:
+            raise ValueError("error_code es obligatorio si status=failed o cancelled")
         return self
