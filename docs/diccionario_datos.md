@@ -15,8 +15,10 @@
 
 - **Zona horaria**: UTC para toda generación y exportación (ISO 8601 con sufijo Z).
 - **sla_target_minutes por prioridad**: critical=60, high=240, medium=1440, low=4320.
+- **technician_id / first_response_at**: siempre van juntos, excepto en tickets
+  `open`, donde technician_id puede existir por asignación preventiva con
+  probabilidad `TECID_CHANCE_ON_OPEN`, pero first_response_at nunca.
 - **Tolerancia backups**: started_at puede ser hasta 15 min posterior a scheduled_at.
-
 
 ## Tickets de soporte
 

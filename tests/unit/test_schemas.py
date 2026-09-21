@@ -102,6 +102,22 @@ def test_ticket_closed_at_anterior_a_created_falla():
             satisfaction_score=4,
         )
 
+def test_ticket_first_response_sin_technician_falla():
+    with pytest.raises(Exception):
+        Ticket(
+            ticket_id="TCK-2026-00001",
+            client_id="CLI-0042",
+            created_at=datetime(2026, 9, 18, 9, 0),
+            first_response_at=datetime(2026, 9, 18, 10, 0),
+            category="software",
+            priority="high",
+            status="in_progress",
+            channel="email",
+            summary="El cliente no puede acceder al correo corporativo",
+            sla_target_minutes=240,
+            # technician_id ausente a propósito
+        )
+
 def test_ticket_satisfaction_score_sin_closed_falla():
     with pytest.raises(Exception):
         Ticket(

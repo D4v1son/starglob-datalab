@@ -76,6 +76,8 @@ class Ticket(BaseModel):
         expected_sla = SLA_BY_PRIORITY[self.priority.value]
         if self.sla_target_minutes != expected_sla: # incluso si llegamos a signar el tiempo de espera de forma automática, necesitamos poder comprobarlo para las auditorías
             raise ValueError(f"sla_target_minutes debe ser {expected_sla} para priority={self.priority}")
+        if self.first_response_at and not self.technician_id:
+            raise ValueError("first_response_at requiere technician_id")
         return self
     
 

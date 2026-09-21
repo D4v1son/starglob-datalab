@@ -29,4 +29,20 @@ Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguri
 
 ## Instalación
 
-*(pendiente, se documentará cuando el entorno esté probado de principio a fin)*
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+## Uso
+
+Generar un dataset limpio:
+```powershell
+python -m starglob_datalab generate --config config/tickets_demo.yaml
+```
+
+Esto crea `output/tickets_demo/tickets_clean.csv`, reproducible: la misma
+configuración y semilla siempre produce el mismo resultado.
+
+*(los comandos `audit` y `evaluate` se documentarán cuando estén implementados)*
