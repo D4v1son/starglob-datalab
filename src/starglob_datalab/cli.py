@@ -3,14 +3,16 @@ from pathlib import Path
 
 from starglob_datalab.configuration import load_config
 from starglob_datalab.generation.tickets import generate_tickets
-
+from starglob_datalab.generation.backups import generate_backups
 
 
 def cmd_generate(args):
     config = load_config(args.config)
-    
+
     if config.template == "tickets":
         df = generate_tickets(config)
+    elif config.template == "backups":
+        df = generate_backups(config)
     else:
         raise NotImplementedError(f"Plantilla '{config.template}' aún no implementada")
     

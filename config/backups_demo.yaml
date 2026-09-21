@@ -1,0 +1,8 @@
+name: backups_demo
+template: backups
+seed: 20260918
+rows: 5000
+period:
+  start_date: 2026-01-01
+  end_date: 2026-03-31
+output_dir: output/backups_demo

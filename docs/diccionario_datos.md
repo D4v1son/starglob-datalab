@@ -19,6 +19,10 @@
   `open`, donde technician_id puede existir por asignación preventiva con
   probabilidad `TECID_CHANCE_ON_OPEN`, pero first_response_at nunca.
 - **Tolerancia backups**: started_at puede ser hasta 15 min posterior a scheduled_at.
+- **Continuidad temporal**: aplica solo a backups, no a tickets. Los backups
+  son trabajos recurrentes programados (mismo cliente+job_name repitiéndose
+  a intervalos regulares); los tickets son incidencias independientes sin
+  relación temporal entre sí.
 
 ## Tickets de soporte
 
