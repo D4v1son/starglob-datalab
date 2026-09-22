@@ -56,3 +56,32 @@ garantizar orden cronológico correcto.
 (`first_response_at`/`technician_id` podían generarse de forma inconsistente).
 
 **Siguiente paso**: Generador de backups con continuidad temporal (Día 4).
+
+---
+
+## Día 4 - [2026-09-22]
+
+**Horas**: ~5h
+
+**Completado**: Generador de backups (`generate_backups`) con continuidad
+temporal (trabajos recurrentes diarios/semanales por cliente+job_name).
+CLI actualizado para soportar plantilla `backups`. Tests de integración
+(unicidad de IDs, número de filas, reproducibilidad, espaciado regular
+entre ejecuciones de un mismo trabajo). Diccionario de datos actualizado.
+[COMMIT]()
+
+**Decisiones**: Frecuencia de trabajos 75% diaria / 25% semanal.
+Distribución de status: 80% success, 8% warning, 7% failed, 3% cancelled,
+2% running. Selección de trabajos completos (no fechas sueltas) hasta
+alcanzar `rows`, en orden barajado por semilla, para evitar sesgo hacia
+el inicio del periodo y hacia los primeros trabajos generados.
+
+**Bloqueos**: Varios errores menores corregidos durante el desarrollo
+(sintaxis en construcción de diccionario, typo en clave de frecuencia,
+`OrderedDict` requerido por Faker para pesos, typo en nombre de columna
+en test). Bug de diseño detectado y corregido: el truncado inicial por
+fecha rompía la continuidad temporal al concentrar filas en el inicio
+del periodo.
+
+**Siguiente paso**: Primera revisión (Día 5). Refactorizar, probar
+configuración y generadores, preparar demostración de 10 minutos.

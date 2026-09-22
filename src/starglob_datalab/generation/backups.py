@@ -62,14 +62,24 @@ def generate_backups(config: GeneratorConfig) -> pd.DataFrame:
     
     n_jobs = max(MIN_NJOBS, config.rows // MEAN_NJOBS)
     trabajos = _generar_trabajos(fake, n_jobs)
-    ejecuciones = _generar_ejecuciones(trabajos, config.period, fake)
-    ejecuciones.sort(key=lambda e: e["scheduled_at"])
+    fake.random.shuffle(trabajos) # evita sesgo hacia los primeros trabajos generados
+    
+    # se van añadiendo trabajos completos (no fechas sueltas) hasta llegar al total pedido
+    # de esta forma tenemos una cobertura uniforme de los trabajos en el periodo
+    ejecuciones = []
+    for trabajo in trabajos:
+        if len(ejecuciones) >= config.rows:
+            break
+        ejecuciones.extend(_generar_ejecuciones([trabajo], config.period, fake))
     
     if len(ejecuciones) < config.rows:
         raise ValueError(
             f"Solo se generaron {len(ejecuciones)} ejecuciones para {config.rows} "
             "filas pedidas; aumenta el nº de trabajos o reduce 'rows'."
         )
+    
+    ejecuciones = ejecuciones[:config.rows]  # recorta solo el último trabajo, si se pasa
+    ejecuciones.sort(key=lambda e: e["scheduled_at"])
     
     contador_por_fecha = {}
     backups = []

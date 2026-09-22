@@ -11,19 +11,6 @@
 | source_system (backups) | filesystem, database, virtual_machine, application |
 | status (backups) | success, warning, failed, cancelled, running |
 
-## Decisiones propias (no especificadas en el encargo)
-
-- **Zona horaria**: UTC para toda generación y exportación (ISO 8601 con sufijo Z).
-- **sla_target_minutes por prioridad**: critical=60, high=240, medium=1440, low=4320.
-- **technician_id / first_response_at**: siempre van juntos, excepto en tickets
-  `open`, donde technician_id puede existir por asignación preventiva con
-  probabilidad `TECID_CHANCE_ON_OPEN`, pero first_response_at nunca.
-- **Tolerancia backups**: started_at puede ser hasta 15 min posterior a scheduled_at.
-- **Continuidad temporal**: aplica solo a backups, no a tickets. Los backups
-  son trabajos recurrentes programados (mismo cliente+job_name repitiéndose
-  a intervalos regulares); los tickets son incidencias independientes sin
-  relación temporal entre sí.
-
 ## Tickets de soporte
 
 | Campo | Tipo | Obligatorio | Regla |
@@ -59,3 +46,24 @@
 | checksum_verified | boolean | No | puede ser null si failed |
 | error_code | string | Condicional | obligatorio si failed/cancelled |
 | error_message | string | No | — |
+
+## Decisiones propias
+
+- **Zona horaria**: UTC para toda generación y exportación (ISO 8601 con sufijo Z).
+- **sla_target_minutes por prioridad**: critical=60, high=240, medium=1440, low=4320.
+- **technician_id / first_response_at**: siempre van juntos, excepto en tickets
+  `open`, donde technician_id puede existir por asignación preventiva con
+  probabilidad `TECID_CHANCE_ON_OPEN`, pero first_response_at nunca.
+- **Tolerancia backups**: started_at puede ser hasta 15 min posterior a scheduled_at.
+- **Continuidad temporal**: aplica solo a backups, no a tickets. Los backups
+  son trabajos recurrentes programados (mismo cliente+job_name repitiéndose
+  a intervalos regulares); los tickets son incidencias independientes sin
+  relación temporal entre sí.
+- **Cobertura de periodo en backups**: se seleccionan trabajos completos
+  (con su recurrencia por todo el periodo) hasta alcanzar el número de
+  filas pedido, en orden barajado (reproducible por semilla) para evitar
+  sesgo hacia los primeros trabajos generados. El último trabajo incluido
+  puede quedar truncado a mitad de su recurrencia si se excede el total.
+- **Distribución de status en backups**: 80% success, 8% warning,
+  7% failed, 3% cancelled, 2% running.
+- **Frecuencia de trabajos**: 75% diaria, 25% semanal.
