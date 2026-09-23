@@ -51,6 +51,11 @@ deactivate
 ```
 ## Uso
 
+Comprobar versión del programa:
+```powershell
+python -m starglob_datalab --version
+```
+
 Generar un dataset limpio:
 ```powershell
 python -m starglob_datalab generate --config config/tickets_demo.yaml

@@ -4,6 +4,7 @@ from pathlib import Path
 from starglob_datalab.configuration import load_config
 from starglob_datalab.generation.tickets import generate_tickets
 from starglob_datalab.generation.backups import generate_backups
+from importlib.metadata import version as pkg_version
 
 
 def cmd_generate(args):
@@ -26,6 +27,7 @@ def cmd_generate(args):
 
 def main():
     parser = argparse.ArgumentParser(prog="starglob_datalab")
+    parser.add_argument("--version", action="version", version=f"starglob_datalab {pkg_version('starglob-datalab')}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     
     generate_parser = subparsers.add_parser("generate", help="Genera un dataset limmpio")
