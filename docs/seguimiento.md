@@ -85,3 +85,24 @@ del periodo.
 
 **Siguiente paso**: Primera revisión (Día 5). Refactorizar, probar
 configuración y generadores, preparar demostración de 10 minutos.
+
+---
+
+## Día 5 — [2026-09-23]
+
+**Horas**: ~5h
+
+**Completado**: Refactor según criterios del Anexo D (nombres de constantes,
+docstrings, tipos correctos). Validación con volumen real (10000 filas en
+ambas plantillas, CA02). Prueba de instalación limpia desde repositorio
+recién clonado (CA01). README corregido con el paso de instalación de
+dependencias de desarrollo.
+
+**Decisiones**: Versión del proyecto actualizada a 0.3.0 en pyproject.toml,
+marcando el cierre de Hito H1.
+
+**Bloqueos**: Bug real detectado y corregido - `fin_periodo` en el generador
+de backups excluía el último día del periodo configurado (comparación
+estricta sin margen).
+
+**Siguiente paso**: Día 6. Primera anomalía del catálogo (Semana 2).
