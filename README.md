@@ -30,11 +30,25 @@ Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguri
 ## Instalación
 
 ```powershell
+git clone https://github.com/D4v1son/starglob-datalab.git StarGlob_DataLab
+cd StarGlob_DataLab
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+venv\Scripts\activate # Alternativamente: .\venv\Scripts\Activate.ps1
 pip install -e .
 ```
+Para poder utilizar las **herramientas de desarrollador**, primero debes instalar 
+las dependencias de forma separada:
+```powershell
+pip install -e ".[dev]"
 
+# Actualmente nos permite ejecutar tests
+pytest -v
+```
+En caso de querer cambiar de **entorno** de ejecución recuerda salir primero del que
+te encuentres:
+```powershell
+deactivate
+```
 ## Uso
 
 Generar un dataset limpio:

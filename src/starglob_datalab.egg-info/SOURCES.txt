@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 src/starglob_datalab/__init__.py
+src/starglob_datalab/__main__.py
 src/starglob_datalab/cli.py
 src/starglob_datalab/configuration.py
 src/starglob_datalab.egg-info/PKG-INFO
@@ -12,6 +13,8 @@ src/starglob_datalab/anomalies/__init__.py
 src/starglob_datalab/audit/__init__.py
 src/starglob_datalab/evaluation/__init__.py
 src/starglob_datalab/generation/__init__.py
+src/starglob_datalab/generation/backups.py
 src/starglob_datalab/generation/schemas.py
+src/starglob_datalab/generation/tickets.py
 src/starglob_datalab/persistence/__init__.py
 src/starglob_datalab/reporting/__init__.py
