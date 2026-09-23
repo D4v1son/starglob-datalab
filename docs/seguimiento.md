@@ -68,7 +68,7 @@ temporal (trabajos recurrentes diarios/semanales por cliente+job_name).
 CLI actualizado para soportar plantilla `backups`. Tests de integración
 (unicidad de IDs, número de filas, reproducibilidad, espaciado regular
 entre ejecuciones de un mismo trabajo). Diccionario de datos actualizado.
-[COMMIT]()
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/840e4d9ca6779f7929407b8bfa3623125dfb8eae)
 
 **Decisiones**: Frecuencia de trabajos 75% diaria / 25% semanal.
 Distribución de status: 80% success, 8% warning, 7% failed, 3% cancelled,

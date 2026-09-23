@@ -12,6 +12,16 @@ from starglob_datalab.generation.schemas import (
 TECID_CHANCE_ON_OPEN = 80
 
 def generate_tickets(config: GeneratorConfig) -> pd.DataFrame:
+    """
+    Genera un dataset limpio de tickets de soporte, reproducible por semilla.
+    
+    Args:
+        config: configuración cargada desde el YAML (semilla, filas, periodo).
+
+    Returns:
+        DataFrame con una fila por ticket, columnas según el schema Ticket.
+    """
+    
     fake = Faker()
     fake.seed_instance(config.seed)
     

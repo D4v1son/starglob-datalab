@@ -7,8 +7,9 @@ from starglob_datalab.configuration import GeneratorConfig
 from starglob_datalab.generation.schemas import BackupJob, BackupSourceSystem, BackupStatus
 
 
-MIN_NJOBS  = 3  # no es buena idea bajarlo más, se generaran demasiadas instancias independientes
-MEAN_NJOBS = 30 # cambialo si quieres ajustar la cantidad de trabajos que tendrá cada cliente
+FILAS_POR_TRABAJO_MINIMAS   = 3  # no es buena idea bajarlo más, se generaran demasiadas instancias independientes
+FILAS_POR_TRABAJO_ESTIMADAS = 30 # cambialo si quieres ajustar la cantidad de trabajos que tendrá cada cliente
+# antes: MIN_NJOB y MEAN_NJOBS
 
 STATUS_WEIGHTS = OrderedDict([
     (BackupStatus.SUCCESS, 80),
@@ -18,26 +19,26 @@ STATUS_WEIGHTS = OrderedDict([
     (BackupStatus.RUNNING, 2),
 ])   # si no se cambia la generación siempre tendrá la misma proporción de backups exitosos...
 
+FRECUENCIAS_DIAS = [1, 1, 1, 7]  # 75% diario, 25% semanal -  más probabilidad de diario que semanal
 
 def _elegir_status(fake: Faker):
     return fake.random_elements(elements=STATUS_WEIGHTS, length=1)[0]
 
 def _generar_trabajos(fake: Faker, n_jobs):
     """Crea trabajos de backup recurrentes (cliente + nombre + frecuencia)."""
-    frecuencias_dias = [1, 1, 1, 7] # más probabilidad de diario que semanal
     return [
         {
             "client_id": f"CLI-{fake.random_int(min=1, max=999):04d}",
             "job_name": f"backup_{fake.word()}_{i:03d}",
             "source_system": fake.random_element(list(BackupSourceSystem)),
-            "frecuencia_dias": fake.random_element(frecuencias_dias),
+            "frecuencia_dias": fake.random_element(FRECUENCIAS_DIAS),
         }
         for i in range(n_jobs)
     ]
 
 def _generar_ejecuciones(trabajos, period, fake: Faker):
     """Expande cada trabajo en sus ejecuciones programadas dentro del periodo."""
-    fin_periodo = pd.Timestamp(period.end_date)
+    fin_periodo = pd.Timestamp(period.end_date) + timedelta(days=1)
     ejecuciones = []
     for trabajo in trabajos:
         fecha = pd.Timestamp(period.start_date) + timedelta(
@@ -56,11 +57,17 @@ def generate_backups(config: GeneratorConfig) -> pd.DataFrame:
     cada trabajo (cliente + job_name) se ejecuta periódicamente (diario o
     semanal) a lo largo del periodo configurado, en vez de filas sueltas
     independientes.
+    
+    Args:
+        config: configuración cargada desde el YAML (semilla, filas, periodo).
+            
+    Returns:
+        DataFrame con una fila por job, columnas según el schema BackupJob.
     """
     fake = Faker()
     fake.seed_instance(config.seed)
     
-    n_jobs = max(MIN_NJOBS, config.rows // MEAN_NJOBS)
+    n_jobs = max(FILAS_POR_TRABAJO_MINIMAS, config.rows // FILAS_POR_TRABAJO_ESTIMADAS)
     trabajos = _generar_trabajos(fake, n_jobs)
     fake.random.shuffle(trabajos) # evita sesgo hacia los primeros trabajos generados
     

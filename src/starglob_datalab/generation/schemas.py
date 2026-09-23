@@ -105,7 +105,7 @@ class BackupJob(BaseModel):
     status: BackupStatus
     bytes_processed: Optional[int] = None
     files_processed: Optional[int] = None
-    checksum_verified: Optional[int] = None
+    checksum_verified: Optional[bool] = None
     error_code: Optional[str] = None
     error_message: Optional[str] = None
     

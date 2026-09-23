@@ -46,9 +46,9 @@ def test_fechas_dentro_del_periodo():
     df["scheduled_at"] = pd.to_datetime(df["scheduled_at"])
     # el inicio y el fin son los que preestablecimos en _config()
     inicio = pd.Timestamp("2026-01-01")
-    fin = pd.Timestamp("2026-03-31")
+    fin = pd.Timestamp("2026-03-31") + pd.Timedelta(days=1)
     assert (df["scheduled_at"] >= inicio).all()
-    assert (df["scheduled_at"] <= fin).all()
+    assert (df["scheduled_at"] < fin).all()
     
 def test_columnas_esperadas_presentes():
     # como este test trabaja con las columnas y no los datos podemos generar menos filas
