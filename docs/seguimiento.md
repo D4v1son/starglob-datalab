@@ -97,6 +97,7 @@ docstrings, tipos correctos). Validación con volumen real (10000 filas en
 ambas plantillas, CA02). Prueba de instalación limpia desde repositorio
 recién clonado (CA01). README corregido con el paso de instalación de
 dependencias de desarrollo.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/bc9821ac4854eff0b202ed375732dbf3a0ddd0b6)
 
 **Decisiones**: Versión del proyecto actualizada a 0.3.0 en pyproject.toml,
 marcando el cierre de Hito H1.
