@@ -27,6 +27,22 @@ Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguri
 - **Semana 2**: catálogo de anomalías (DQ01–DQ14) + auditor + evaluador
 - **Semana 3**: persistencia SQLite + dashboard + documentación + entrega
 
+## Anomalías y auditoría
+
+El dataset limpio (`clean.csv`) se copia y se le inyectan anomalías controladas 
+para producir un dataset "sucio" (`dirty.csv`), junto con un manifiesto 
+(`truth_manifest.jsonl`) que registra exactamente qué se alteró, dónde y por qué. 
+Este manifiesto es la "verdad conocida" contra la que se evalúa después el 
+auditor.
+
+El identificador de fila (`row_id`) usado en el manifiesto se toma como
+una copia congelada del ID original (`ticket_id`/`backup_id`) antes de
+inyectar nada, de forma que sigue siendo trazable incluso si la propia
+anomalía corrompe ese campo (ver DQ03).
+
+Consulta el [catálogo de anomalías](./docs/catalogo_anomalias.md) para el
+detalle de cada código implementado, su definición y ejemplo.
+
 ## Instalación
 
 ```powershell

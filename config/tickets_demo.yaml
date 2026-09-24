@@ -6,3 +6,12 @@ period:
   start_date: 2026-01-01
   end_date: 2026-03-31
 output_dir: output/tickets_demo
+
+anomalies:
+  - code: DQ_01
+    count: 5
+    fields: [summary]
+  - code: DQ_02
+    count: 3
+  - code: DQ_03
+    count: 2

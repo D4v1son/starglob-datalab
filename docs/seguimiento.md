@@ -88,7 +88,7 @@ configuración y generadores, preparar demostración de 10 minutos.
 
 ---
 
-## Día 5 — [2026-09-23]
+## Día 5 - [2026-09-23]
 
 **Horas**: ~5h
 
@@ -107,3 +107,4 @@ de backups excluía el último día del periodo configurado (comparación
 estricta sin margen).
 
 **Siguiente paso**: Día 6. Primera anomalía del catálogo (Semana 2).
+
