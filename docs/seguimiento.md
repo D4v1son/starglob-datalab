@@ -108,3 +108,37 @@ estricta sin margen).
 
 **Siguiente paso**: Día 6. Primera anomalía del catálogo (Semana 2).
 
+---
+
+## Día 6 - [2026-09-24]
+
+**Horas**: ~5h
+
+**Completado**: Estructura del manifiesto (`ManifestEntry`) y 
+extensión de `configuration.py` con `AnomalyInjectionConfig`.
+Inyector (`injector.py`) con `InjectionContext` compartido, y las 5
+primeras anomalías del catálogo implementadas en `rules.py`: DQ01
+(valor obligatorio ausente), DQ02 (duplicado exacto), DQ03 (identificador
+duplicado), DQ04 (categoría no permitida), DQ05 (tipo incorrecto).
+Documentación en `docs/catalogo_anomalias.md` y nueva sección en el
+README. Tests de integración cubriendo las 5 reglas por separado y en
+combinación. [COMMIT](https://github.com/D4v1son/starglob-datalab/commit/3f0ff44251f1de16126e1d4dc70b815f197c823b)
+
+**Decisiones**: `row_id` del manifiesto se toma de una copia congelada
+de los IDs (`frozen_ids`) tomada antes de inyectar nada, para que
+sobreviva a anomalías que corrompen el propio campo de ID (DQ03).
+`used_cells`/`used_rows` en el contexto evitan mezclar anomalías
+distintas en la misma celda o fila. Filas añadidas por DQ02 (duplicados)
+quedan excluidas como candidatas de otras anomalías posteriores (no
+están en `frozen_ids`). DQ04 resuelve el catálogo de valores válidos
+según la plantilla (tickets/backups), necesario por la ambigüedad del
+campo `status`. `rate`/`count` en la configuración de anomalías son
+mutuamente excluyentes (validado).
+
+**Bloqueos**: Bug de índices duplicados en `pd.concat` (DQ02) corregido
+con `ignore_index=True`, causaba comparaciones ambiguas de Series en
+anomalías posteriores. Error de indentación en DQ05 (asignación fuera
+del bucle). `KeyError` en `frozen_ids` para filas nuevas de DQ02,
+resuelto excluyéndolas como candidatas.
+
+**Siguiente paso**: Día 7, anomalías lógicas DQ06 a DQ10.

@@ -6,11 +6,11 @@ con la estructura definida en el Anexo B del encargo.
 
 | Código | Nombre | Ejemplo | Estado |
 |---|---|---|---|
-| DQ_01 | Valor obligatorio ausente | `created_at` vacío | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_02 | Duplicado exacto | Dos registros idénticos | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_03 | Identificador duplicado | `ticket_id` repetido | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_04 | Categoría no permitida | `priority = "urgent"` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_05 | Tipo incorrecto | `files_processed = "muchos"` | <ul><li>- [ ] Pendiente</li></ul> |
+| DQ_01 | Valor obligatorio ausente | `created_at` vacío | <ul><li>- [x] Implementado</li></ul> |
+| DQ_02 | Duplicado exacto | Dos registros idénticos | <ul><li>- [x] Implementado</li></ul> |
+| DQ_03 | Identificador duplicado | `ticket_id` repetido | <ul><li>- [x] Implementado</li></ul> |
+| DQ_04 | Categoría no permitida | `priority = "urgent"` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_05 | Tipo incorrecto | `files_processed = "muchos"` | <ul><li>- [x] Implementado</li></ul> |
 | DQ_06 | Valor fuera de rango | `satisfaction_score = 9` | <ul><li>- [ ] Pendiente</li></ul> |
 | DQ_07 | Cronología imposible | `closed_at` anterior a `created_at` | <ul><li>- [ ] Pendiente</li></ul> |
 | DQ_08 | Dependencia incumplida | `failed` sin `error_code` | <ul><li>- [ ] Pendiente</li></ul> |
