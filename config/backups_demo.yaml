@@ -1,8 +1,29 @@
 name: backups_demo
 template: backups
 seed: 20260918
-rows: 10000
+rows: 100000
 period:
   start_date: 2026-01-01
   end_date: 2026-03-31
 output_dir: output/backups_demo
+
+anomalies:
+  - code: DQ_01
+    count: 20
+    fields: [job_name]
+  - code: DQ_02
+    count: 15
+  - code: DQ_03
+    count: 10
+  - code: DQ_04
+    count: 15
+    fields: [status]
+  - code: DQ_08
+    count: 20
+    fields: [error_code]
+  - code: DQ_09
+    count: 15
+    fields: [scheduled_at]
+  - code: DQ_10
+    count: 15
+    fields: [job_name]

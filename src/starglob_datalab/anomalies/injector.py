@@ -27,6 +27,11 @@ APPLICATORS = {
     "DQ_03": rules.apply_dq03,
     "DQ_04": rules.apply_dq04,
     "DQ_05": rules.apply_dq05,
+    "DQ_06": rules.apply_dq06,
+    "DQ_07": rules.apply_dq07,
+    "DQ_08": rules.apply_dq08,
+    "DQ_09": rules.apply_dq09,
+    "DQ_10": rules.apply_dq10,
     # se irán añadiendo aquí conforme implementemos cada anomalía
 }
 
