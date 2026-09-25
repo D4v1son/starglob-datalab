@@ -122,7 +122,8 @@ primeras anomalías del catálogo implementadas en `rules.py`: DQ01
 duplicado), DQ04 (categoría no permitida), DQ05 (tipo incorrecto).
 Documentación en `docs/catalogo_anomalias.md` y nueva sección en el
 README. Tests de integración cubriendo las 5 reglas por separado y en
-combinación. [COMMIT](https://github.com/D4v1son/starglob-datalab/commit/3f0ff44251f1de16126e1d4dc70b815f197c823b)
+combinación. 
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/3f0ff44251f1de16126e1d4dc70b815f197c823b)
 
 **Decisiones**: `row_id` del manifiesto se toma de una copia congelada
 de los IDs (`frozen_ids`) tomada antes de inyectar nada, para que
@@ -142,3 +143,31 @@ del bucle). `KeyError` en `frozen_ids` para filas nuevas de DQ02,
 resuelto excluyéndolas como candidatas.
 
 **Siguiente paso**: Día 7, anomalías lógicas DQ06 a DQ10.
+
+---
+
+## Día 7 - [2026-09-25]
+
+**Horas**: ~5h
+
+**Completado**: DQ06-DQ10 implementadas en `rules.py` (valor fuera de
+rango, cronología imposible, dependencia incumplida, formato
+inconsistente, espacios/capitalización). CLI (`cmd_generate`) conectado
+por fin al inyector: ahora `generate` produce `clean.csv`, `dirty.csv` y
+`truth_manifest.jsonl` cuando el YAML incluye anomalías. Tests de
+integración cubriendo las 10 anomalías por separado y en combinación,
+para tickets y backups. Catálogo y README actualizados. 
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/7a6edec24180603db87f9ebf93fddd1ac7ae91e2)
+
+**Decisiones**: `RANGES_BY_TEMPLATE`/`DEPENDENCIAS_BY_TEMPLATE` amplían
+el patrón de `FIELD_ENUMS_BY_TEMPLATE` para rangos y dependencias por
+plantilla. DQ08 y DQ09 no se combinan con DQ07/DQ01 respectivamente en 
+el mismo YAML cuando comparten candidatos potenciales (mismo campo 
+disparador).
+
+**Bloqueos**: `generate` no invocaba el inyector pese a existir desde
+Día 6 (conectado hoy).
+
+**Siguiente paso**: Día 8, DQ11 a DQ14 (continuidad, valor extremo,
+referencia huérfana, codificación dañada) y resolver interacciones entre
+anomalías.
