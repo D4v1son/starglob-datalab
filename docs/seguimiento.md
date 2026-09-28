@@ -171,3 +171,34 @@ Día 6 (conectado hoy).
 **Siguiente paso**: Día 8, DQ11 a DQ14 (continuidad, valor extremo,
 referencia huérfana, codificación dañada) y resolver interacciones entre
 anomalías.
+
+---
+
+## Día 8 - [2026-09-28]
+
+**Horas**: ~5h
+
+**Completado**: DQ11-DQ14 implementadas (hueco temporal, valor extremo,
+referencia huérfana, codificación dañada): catálogo mínimo completo,
+DQ01-DQ14. Revisión de interacciones entre anomalías: comprobación
+común `fila_libre`, bloqueo de celdas de referencia y de filas
+donantes, índices nuevos propios para DQ02. Tests de las cuatro
+anomalías nuevas, de las interacciones y combinados para ambas
+plantillas. YAML de demo actualizados con todas las anomalías
+aplicables. Catálogo actualizado.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/8711ac86f86f7edba0969a0bf8be00a4e91d3b00)
+
+**Decisiones**: Granularidad por celda (no por fila) para las
+interacciones. DQ11 solo sobre ejecuciones intermedias de backups y
+con emparejamiento posterior por cliente + trabajo + fecha. DQ13
+define huérfano por rango de IDs, con `MAX_TECHNICIAN_ID` compartida
+con el generador. DQ12 y DQ14 acotadas (duraciones y texto).
+
+**Bloqueos**: Ninguno bloqueante. Se detectó que DQ02 comprobaba
+`used_rows` con el ID en vivo, que DQ03 puede haber cambiado
+(corregido con `frozen_ids`), y que `ignore_index=True` en DQ02
+desalinearía `frozen_ids` con DQ11 (sustituido por `next_index`).
+
+**Siguiente paso**: Día 9 - auditor: interfaz común de reglas,
+hallazgos y resúmenes, auditando ambos esquemas
+(`audit_results.json`).
