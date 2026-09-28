@@ -7,19 +7,25 @@ from starglob_datalab.anomalies import rules
 class InjectionContext:
     """Estado compartido entre todas las anomalías de una misma ejecución."""
     
-    def __init__(self, seed: int, run_id: str, frozen_ids: dict, template: str):
+    def __init__(self, seed: int, run_id: str, frozen_ids: dict, template: str, original_df):
         self.rng = random.Random(seed)
         self.seed = seed
         self.run_id = run_id
         self._order = 0
-        self.used_cells = set()         # (row_id, field) ya alterados, para no repetir celda
-        self.used_rows = set()          # filas usadas, en caso de no querer repetir filas
-        self.frozen_ids = frozen_ids    # {índice de fila: row_id original}
-        self.template = template        # para saber si tratamos con Tockets o Backups
+        self.used_cells = set()                 # (row_id, field) ya alterados, para no repetir celda
+        self.used_rows = set()                  # filas usadas, en caso de no querer repetir filas
+        self.frozen_ids = frozen_ids            # {índice de fila: row_id original}
+        self.next_index = max(frozen_ids) + 1   # siguiente índice libre para filas nuevas (DQ02)
+        self.template = template                # para saber si tratamos con Tockets o Backups
+        self.original_df = original_df          # copia del dataset limpio, nunca se modifica
         
     def next_entry_ids(self):
         self._order += 1
         return self._order, f"anom_{self._order:06d}"
+    
+    def fila_libre(self, row_id) -> bool:
+        """True si ninguna anomalía ha tocado la fila (ni entera ni ninguna celda)."""
+        return row_id not in self.used_rows and not any(rid == row_id for rid, _ in self.used_cells)
 
 APPLICATORS = {
     "DQ_01": rules.apply_dq01,
@@ -32,7 +38,10 @@ APPLICATORS = {
     "DQ_08": rules.apply_dq08,
     "DQ_09": rules.apply_dq09,
     "DQ_10": rules.apply_dq10,
-    # se irán añadiendo aquí conforme implementemos cada anomalía
+    "DQ_11": rules.apply_dq11,
+    "DQ_12": rules.apply_dq12,
+    "DQ_13": rules.apply_dq13,
+    "DQ_14": rules.apply_dq14,
 }
 
 # injector.py
@@ -47,7 +56,8 @@ def inject_anomalies(df, row_id_col: str, config, run_id: str):
         seed=config.seed,
         run_id=run_id,
         frozen_ids=frozen_ids,
-        template=config.template
+        template=config.template,
+        original_df=df.copy(),
     )
         
     entries = []
@@ -58,3 +68,4 @@ def inject_anomalies(df, row_id_col: str, config, run_id: str):
         df, nuevas_entries = aplicar(df, row_id_col, anomaly_cfg, ctx)
         entries.extend(nuevas_entries)
     return df, entries
+    

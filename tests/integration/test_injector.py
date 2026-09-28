@@ -3,6 +3,10 @@ from starglob_datalab.configuration import GeneratorConfig, Period, AnomalyInjec
 from starglob_datalab.generation.tickets import generate_tickets
 from starglob_datalab.generation.backups import generate_backups
 from starglob_datalab.anomalies.injector import inject_anomalies
+import re
+import pytest
+from starglob_datalab.generation.tickets import MAX_TECHNICIAN_ID
+from starglob_datalab.anomalies.rules import SECUENCIAS_DANADAS
 
 
 def _config_tickets(anomalies=None, rows=200, seed=42):
@@ -224,6 +228,130 @@ def test_dq10_altera_pero_conserva_contenido():
         assert valor != e.original_value
         assert valor.strip().lower() == e.original_value.strip().lower()
 
+# --- DQ_11 ---
+
+def test_dq11_elimina_filas():
+    df_clean, df_dirty, entries = _generar_backups([
+        AnomalyInjectionConfig(code="DQ_11", count=5)
+    ])
+    assert len(entries) == 5
+    assert len(df_dirty) == len(df_clean) - 5
+    for e in entries:
+        assert e.row_id in set(df_clean["backup_id"])
+        assert e.row_id not in set(df_dirty["backup_id"])
+        assert e.related_fields == ["client_id", "job_name"]
+
+
+def test_dq11_solo_elimina_ejecuciones_intermedias():
+    df_clean, _, entries = _generar_backups([
+        AnomalyInjectionConfig(code="DQ_11", count=5)
+    ])
+    for e in entries:
+        fila = df_clean[df_clean["backup_id"] == e.row_id].iloc[0]
+        mismo_job = df_clean[
+            (df_clean["client_id"] == fila["client_id"])
+            & (df_clean["job_name"] == fila["job_name"])
+        ]
+        assert mismo_job["scheduled_at"].min() < fila["scheduled_at"] < mismo_job["scheduled_at"].max()
+
+
+def test_dq11_solo_aplica_a_backups():
+    with pytest.raises(ValueError):
+        _generar_tickets([AnomalyInjectionConfig(code="DQ_11", count=1)])
+
+
+# --- DQ_12 ---
+
+def test_dq12_duracion_desproporcionada():
+    _, df_dirty, entries = _generar_backups([
+        AnomalyInjectionConfig(code="DQ_12", count=5, fields=["finished_at", "started_at"])
+    ])
+    assert len(entries) == 5
+    for e in entries:
+        fila = df_dirty[df_dirty["backup_id"] == e.row_id]
+        fin = pd.Timestamp(fila["finished_at"].values[0])
+        inicio = pd.Timestamp(fila["started_at"].values[0])
+        assert fin > inicio                          # sigue siendo cronológicamente válido
+        assert fin - inicio >= pd.Timedelta(days=30)  # pero desproporcionado
+
+
+def test_dq12_requiere_dos_campos():
+    with pytest.raises(ValueError):
+        _generar_backups([AnomalyInjectionConfig(code="DQ_12", count=1, fields=["finished_at"])])
+
+
+# --- DQ_13 ---
+
+def test_dq13_tecnico_inexistente_con_formato_valido():
+    _, df_dirty, entries = _generar_tickets([
+        AnomalyInjectionConfig(code="DQ_13", count=5, fields=["technician_id"])
+    ])
+    assert len(entries) == 5
+    for e in entries:
+        fila = df_dirty[df_dirty["ticket_id"] == e.row_id]
+        valor = fila["technician_id"].values[0]
+        assert re.fullmatch(r"TEC-\d{3}", valor)               # formato correcto
+        assert int(valor.split("-")[1]) > MAX_TECHNICIAN_ID    # pero fuera del rango que existe
+
+
+def test_dq13_falla_sin_catalogo_de_referencia():
+    with pytest.raises(ValueError):
+        _generar_tickets([AnomalyInjectionConfig(code="DQ_13", count=1, fields=["client_id"])])
+
+
+def test_dq13_falla_en_backups():
+    with pytest.raises(ValueError):
+        _generar_backups([AnomalyInjectionConfig(code="DQ_13", count=1, fields=["client_id"])])
+
+
+# --- DQ_14 ---
+
+def test_dq14_introduce_caracteres_ilegibles():
+    _, df_dirty, entries = _generar_tickets([
+        AnomalyInjectionConfig(code="DQ_14", count=5, fields=["summary"])
+    ])
+    assert len(entries) == 5
+    for e in entries:
+        fila = df_dirty[df_dirty["ticket_id"] == e.row_id]
+        valor = fila["summary"].values[0]
+        assert valor != e.original_value
+        assert any(secuencia in valor for secuencia in SECUENCIAS_DANADAS)
+
+
+def test_dq14_falla_en_campo_no_textual():
+    with pytest.raises(ValueError):
+        _generar_tickets([AnomalyInjectionConfig(code="DQ_14", count=1, fields=["sla_target_minutes"])])
+
+# --- Interacciones entre anomalías ---
+
+def test_dq02_y_dq11_mantienen_indices_unicos():
+    for orden in (["DQ_11", "DQ_02"], ["DQ_02", "DQ_11"]):
+        _, df_dirty, _ = _generar_backups([
+            AnomalyInjectionConfig(code=code, count=5) for code in orden
+        ])
+        assert df_dirty.index.is_unique
+
+
+def test_dq11_no_borra_el_donante_de_dq03():
+    _, df_dirty, entries = _generar_backups([
+        AnomalyInjectionConfig(code="DQ_03", count=5),
+        AnomalyInjectionConfig(code="DQ_11", count=5),
+    ])
+    for e in entries:
+        if e.code == "DQ_03":
+            # el ID duplicado sigue en el donante (y en el objetivo): al menos 2 filas
+            assert (df_dirty["backup_id"] == e.altered_value).sum() >= 2
+
+
+def test_dq07_y_dq09_no_comparten_celda_created_at():
+    _, _, entries = _generar_tickets([
+        AnomalyInjectionConfig(code="DQ_09", count=10, fields=["created_at"]),
+        AnomalyInjectionConfig(code="DQ_07", count=10, fields=["closed_at", "created_at"]),
+    ])
+    filas_dq09 = {e.row_id for e in entries if e.code == "DQ_09"}
+    filas_dq07 = {e.row_id for e in entries if e.code == "DQ_07"}
+    assert filas_dq09.isdisjoint(filas_dq07)
+
 # --- Combinadas ---
 
 def test_varias_anomalias_no_pisan_las_mismas_celdas():
@@ -237,8 +365,10 @@ def test_varias_anomalias_no_pisan_las_mismas_celdas():
         AnomalyInjectionConfig(code="DQ_07", count=4, fields=["closed_at", "created_at"]),
         AnomalyInjectionConfig(code="DQ_09", count=4, fields=["created_at"]),
         AnomalyInjectionConfig(code="DQ_10", count=4, fields=["summary"]),
+        AnomalyInjectionConfig(code="DQ_13", count=4, fields=["technician_id"]),
+        AnomalyInjectionConfig(code="DQ_14", count=4, fields=["summary"]),
     ])
-    assert len(entries) == 10 + 5 + 3 + 8 + 6 + 4 + 4 + 4 + 4
+    assert len(entries) == 10 + 5 + 3 + 8 + 6 + 4 + 4 + 4 + 4 + 4 + 4
 
 
 def test_varias_anomalias_backups_no_pisan_las_mismas_celdas():
@@ -247,9 +377,11 @@ def test_varias_anomalias_backups_no_pisan_las_mismas_celdas():
         AnomalyInjectionConfig(code="DQ_02", count=5),
         AnomalyInjectionConfig(code="DQ_03", count=3),
         AnomalyInjectionConfig(code="DQ_08", count=6, fields=["error_code"]),
+        AnomalyInjectionConfig(code="DQ_11", count=5),
+        AnomalyInjectionConfig(code="DQ_12", count=4, fields=["finished_at", "started_at"]),
+        AnomalyInjectionConfig(code="DQ_14", count=4, fields=["job_name"]),
     ])
-    assert len(entries) == 10 + 5 + 3 + 6
-
+    assert len(entries) == 10 + 5 + 3 + 6 + 5 + 4 + 4   
 
 def test_misma_semilla_misma_inyeccion():
     anomalies = [AnomalyInjectionConfig(code="DQ_01", count=10, fields=["summary"])]
@@ -257,3 +389,4 @@ def test_misma_semilla_misma_inyeccion():
     _, df2, entries2 = _generar_tickets(anomalies, seed=99)
     assert df1.equals(df2)
     assert [e.row_id for e in entries1] == [e.row_id for e in entries2]
+

@@ -4,6 +4,7 @@ from starglob_datalab.generation.schemas import (
     TicketCategory, TicketPriority, TicketStatus, TicketChannel,
     BackupSourceSystem, BackupStatus,
 )
+from starglob_datalab.generation.tickets import MAX_TECHNICIAN_ID
 
 
 FIELD_ENUMS_BY_TEMPLATE = {
@@ -41,6 +42,17 @@ DEPENDENCES_BY_TEMPLATE = {
     },
 }
 
+EXTREME_DURATION_DAYS = (30, 180)   # criterio de "duración desproporcionada"
+
+# campo -> (prefijo, primer ID válido, último ID válido), por plantilla
+REFERENCIAS_BY_TEMPLATE = {
+    "tickets": {
+        "technician_id": ("TEC", 1, MAX_TECHNICIAN_ID),
+    },
+    "backups": {},
+}
+
+SECUENCIAS_DANADAS = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
 
 def _generar_valor_invalido(campo: str, ctx) -> str:
     enums_plantilla = FIELD_ENUMS_BY_TEMPLATE.get(ctx.template, {})
@@ -121,8 +133,8 @@ def apply_dq02(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntr
     # campo ni de fila completa), para no mezclar anomalías
     candidatos = [
         idx for idx in df.index
-        if df.at[idx, row_id_col] not in ctx.used_rows
-        and not any(rid == df.at[idx, row_id_col] for rid, _ in ctx.used_cells)
+        if idx in ctx.frozen_ids
+        and ctx.fila_libre(ctx.frozen_ids[idx])
     ]
     if len(candidatos) < n:
         raise ValueError(
@@ -156,11 +168,10 @@ def apply_dq02(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntr
     # Se añaden todas las copias de golpe al final, no dentro del bucle,
     # para no alterar los índices mientras se itera sobre 'candidatos'
     df_nuevas = pd.DataFrame(nuevas_filas)
-    # ignore_index=True asigna índices nuevos y únicos a las filas duplicadas,
-    # en vez de que conserven el mismo índice que la fila original — evitando
-    # índices duplicados en el DataFrame, que romperían df.at[]/df.loc[] con
-    # ambigüedad en cualquier anomalía posterior que use ese índice
-    df = pd.concat([df, df_nuevas], ignore_index=True)
+    
+    df_nuevas.index = range(ctx.next_index, ctx.next_index + len(df_nuevas))
+    ctx.next_index += len(df_nuevas)
+    df = pd.concat([df, df_nuevas])
 
     return df, entries
 
@@ -192,6 +203,7 @@ def apply_dq03(df: pd.DataFrame, row_id_col: str, cfg, ctx):
 
         df.at[objetivo_idx, row_id_col] = id_duplicado
         ctx.used_cells.add((row_id, row_id_col))
+        ctx.used_rows.add(id_duplicado)   # el donante no puede ser borrado (DQ11) ni duplicado (DQ02)
 
         order, anomaly_id = ctx.next_entry_ids()
         entries.append(ManifestEntry(
@@ -366,6 +378,7 @@ def apply_dq07(df: pd.DataFrame, row_id_col: str, cfg, ctx):
         and pd.notna(df.at[idx, campo])
         and pd.notna(df.at[idx, referencia])
         and (ctx.frozen_ids[idx], campo) not in ctx.used_cells
+        and (ctx.frozen_ids[idx], referencia) not in ctx.used_cells   
         and ctx.frozen_ids[idx] not in ctx.used_rows
     ]
     if len(candidatos) < n:
@@ -387,6 +400,7 @@ def apply_dq07(df: pd.DataFrame, row_id_col: str, cfg, ctx):
 
         df.at[idx, campo] = valor_invalido
         ctx.used_cells.add((row_id, campo))
+        ctx.used_cells.add((row_id, referencia))   # DQ09 no puede reformatear la referencia
         
         order, anomaly_id = ctx.next_entry_ids()
         entries.append(ManifestEntry(
@@ -423,6 +437,7 @@ def apply_dq08(df: pd.DataFrame, row_id_col: str, cfg, ctx):
         and df.at[idx, disparador] in valores_disparadores  # solo filas donde SÍ aplicaría la obligación
         and pd.notna(df.at[idx, campo])
         and (ctx.frozen_ids[idx], campo) not in ctx.used_cells
+        and (ctx.frozen_ids[idx], disparador) not in ctx.used_cells
         and ctx.frozen_ids[idx] not in ctx.used_rows
     ]
     if len(candidatos) < n:
@@ -439,6 +454,7 @@ def apply_dq08(df: pd.DataFrame, row_id_col: str, cfg, ctx):
 
         df.at[idx, campo] = None
         ctx.used_cells.add((row_id, campo))
+        ctx.used_cells.add((row_id, disparador))
 
         order, anomaly_id = ctx.next_entry_ids()
         entries.append(ManifestEntry(
@@ -556,6 +572,214 @@ def apply_dq10(df: pd.DataFrame, row_id_col: str, cfg, ctx):
             field=campo,
             original_value=original,
             altered_value=valor_invalido,
+            seed=ctx.seed,
+            injected_order=order,
+        ))
+    return df, entries
+
+def apply_dq11(df: pd.DataFrame, row_id_col: str, cfg, ctx):
+    """DQ_11 - Hueco temporal: elimina ejecuciones intermedias de trabajos recurrentes."""
+    if ctx.template != "backups":
+        raise ValueError("DQ_11 solo aplica a la plantilla 'backups' (trabajos recurrentes)")
+    n = _resolve_count(cfg, len(df))
+
+    # Ejecuciones intermedias de cada trabajo según el dataset limpio (ni la primera
+    # ni la última, para que el hueco tenga una ejecución antes y otra después)
+    original = ctx.original_df.sort_values("scheduled_at")
+    intermedias = set()
+    for _, grupo in original.groupby(["client_id", "job_name"]):
+        intermedias.update(list(grupo.index)[1:-1])
+
+    candidatos = [
+        idx for idx in df.index
+        if idx in intermedias
+        and ctx.fila_libre(ctx.frozen_ids[idx])
+    ]
+    if len(candidatos) < n:
+        raise ValueError(
+            f"DQ_11: solo hay {len(candidatos)} ejecuciones intermedias disponibles "
+            f"para {n} solicitadas"
+        )
+
+    elegidos = ctx.rng.sample(candidatos, n)
+    entries = []
+    for idx in elegidos:
+        row_id = ctx.frozen_ids[idx]
+        fecha_eliminada = ctx.original_df.at[idx, "scheduled_at"]
+
+        ctx.used_rows.add(row_id)   # la fila desaparece: nadie más puede tocarla
+
+        order, anomaly_id = ctx.next_entry_ids()
+        entries.append(ManifestEntry(
+            run_id=ctx.run_id,
+            anomaly_id=anomaly_id,
+            code="DQ_11",
+            row_id=row_id,
+            field="scheduled_at",
+            original_value=str(fecha_eliminada),
+            altered_value=None,
+            related_fields=["client_id", "job_name"],
+            seed=ctx.seed,
+            injected_order=order,
+        ))
+
+    df = df.drop(index=elegidos)
+    return df, entries
+
+def apply_dq12(df: pd.DataFrame, row_id_col: str, cfg, ctx):
+    """DQ_12 - Valor extremo: alarga una duración hasta un valor desproporcionado."""
+    if not cfg.fields or len(cfg.fields) != 2:
+        raise ValueError("DQ_12 requiere 'fields: [campo_fin, campo_inicio]'")
+    campo, referencia = cfg.fields
+    n = _resolve_count(cfg, len(df))
+
+    candidatos = [
+        idx for idx in df.index
+        if idx in ctx.frozen_ids
+        and pd.notna(df.at[idx, campo])
+        and pd.notna(df.at[idx, referencia])
+        and (ctx.frozen_ids[idx], campo) not in ctx.used_cells
+        and (ctx.frozen_ids[idx], referencia) not in ctx.used_cells
+        and ctx.frozen_ids[idx] not in ctx.used_rows
+    ]
+    if len(candidatos) < n:
+        raise ValueError(
+            f"DQ_12: solo hay {len(candidatos)} candidatos disponibles "
+            f"para {n} solicitados en '{campo}' vs '{referencia}'"
+        )
+
+    elegidos = ctx.rng.sample(candidatos, n)
+    entries = []
+    for idx in elegidos:
+        row_id = ctx.frozen_ids[idx]
+        original = df.at[idx, campo]
+        inicio = pd.Timestamp(df.at[idx, referencia])
+
+        # el fin queda entre 30 y 180 días después del inicio
+        dias = ctx.rng.randint(*EXTREME_DURATION_DAYS)
+        valor_extremo = inicio + pd.Timedelta(days=dias)
+
+        df.at[idx, campo] = valor_extremo
+        ctx.used_cells.add((row_id, campo))
+        ctx.used_cells.add((row_id, referencia))   # como en DQ07: la referencia no se toca después
+
+        order, anomaly_id = ctx.next_entry_ids()
+        entries.append(ManifestEntry(
+            run_id=ctx.run_id,
+            anomaly_id=anomaly_id,
+            code="DQ_12",
+            row_id=row_id,
+            field=campo,
+            original_value=str(original),
+            altered_value=str(valor_extremo),
+            related_fields=[referencia],
+            seed=ctx.seed,
+            injected_order=order,
+        ))
+    return df, entries
+
+def apply_dq13(df: pd.DataFrame, row_id_col: str, cfg, ctx):
+    """DQ_13 - Referencia huérfana: sustituye un ID por otro con formato válido pero inexistente."""
+    # Idealmente se utilizarían valores fuera de una tabla relacionada que contenga la lista de tecnicos o clientes
+    # Por no hacer dos o tres generadores más, solo genero un valor fuera del rengo de técnicos ficticios (1 a 50)
+    if not cfg.fields:
+        raise ValueError("DQ_13 requiere 'fields' con el campo de referencia a corromper")
+    campo = cfg.fields[0]
+
+    referencia = REFERENCIAS_BY_TEMPLATE.get(ctx.template, {}).get(campo)
+    if referencia is None:
+        raise ValueError(f"DQ_13: no hay catálogo de referencia definido para el campo '{campo}'")
+    prefijo, _, ultimo_valido = referencia
+
+    n = _resolve_count(cfg, len(df))
+
+    candidatos = [
+        idx for idx in df.index
+        if idx in ctx.frozen_ids
+        and pd.notna(df.at[idx, campo])
+        and (ctx.frozen_ids[idx], campo) not in ctx.used_cells
+        and ctx.frozen_ids[idx] not in ctx.used_rows
+    ]
+    if len(candidatos) < n:
+        raise ValueError(
+            f"DQ_13: solo hay {len(candidatos)} candidatos disponibles "
+            f"para {n} solicitados en el campo '{campo}'"
+        )
+
+    elegidos = ctx.rng.sample(candidatos, n)
+    entries = []
+    for idx in elegidos:
+        row_id = ctx.frozen_ids[idx]
+        original = df.at[idx, campo]
+
+        # mismo formato que un ID real, pero fuera del rango de IDs que existen
+        valor_huerfano = f"{prefijo}-{ctx.rng.randint(ultimo_valido + 1, 999):03d}"
+
+        df.at[idx, campo] = valor_huerfano
+        ctx.used_cells.add((row_id, campo))
+
+        order, anomaly_id = ctx.next_entry_ids()
+        entries.append(ManifestEntry(
+            run_id=ctx.run_id,
+            anomaly_id=anomaly_id,
+            code="DQ_13",
+            row_id=row_id,
+            field=campo,
+            original_value=original,
+            altered_value=valor_huerfano,
+            seed=ctx.seed,
+            injected_order=order,
+        ))
+    return df, entries
+
+def _danar_codificacion(valor: str, rng) -> str:
+    """Sustituye entre 1 y 3 caracteres por secuencias típicas de mala codificación."""
+    caracteres = list(valor)
+    posiciones = rng.sample(range(len(caracteres)), min(rng.randint(1, 3), len(caracteres)))
+    for pos in posiciones:
+        caracteres[pos] = rng.choice(SECUENCIAS_DANADAS)
+    return "".join(caracteres)
+
+def apply_dq14(df: pd.DataFrame, row_id_col: str, cfg, ctx):
+    """DQ_14 - Codificación dañada: introduce caracteres ilegibles en un campo de texto."""
+    if not cfg.fields:
+        raise ValueError("DQ_14 requiere 'fields' con el campo de texto a corromper")
+    campo = cfg.fields[0]
+    n = _resolve_count(cfg, len(df))
+
+    candidatos = [
+        idx for idx in df.index
+        if idx in ctx.frozen_ids
+        and isinstance(df.at[idx, campo], str)
+        and len(df.at[idx, campo]) > 0
+        and (ctx.frozen_ids[idx], campo) not in ctx.used_cells
+        and ctx.frozen_ids[idx] not in ctx.used_rows
+    ]
+    if len(candidatos) < n:
+        raise ValueError(
+            f"DQ_14: solo hay {len(candidatos)} candidatos disponibles "
+            f"para {n} solicitados en el campo '{campo}'"
+        )
+
+    elegidos = ctx.rng.sample(candidatos, n)
+    entries = []
+    for idx in elegidos:
+        row_id = ctx.frozen_ids[idx]
+        original = df.at[idx, campo]
+        valor_danado = _danar_codificacion(original, ctx.rng)
+
+        df.at[idx, campo] = valor_danado
+        ctx.used_cells.add((row_id, campo))
+
+        order, anomaly_id = ctx.next_entry_ids()
+        entries.append(ManifestEntry(
+            run_id=ctx.run_id,
+            anomaly_id=anomaly_id,
+            code="DQ_14",
+            row_id=row_id,
+            field=campo,
+            original_value=original,
+            altered_value=valor_danado,   # la "evidencia": el texto ilegible resultante
             seed=ctx.seed,
             injected_order=order,
         ))

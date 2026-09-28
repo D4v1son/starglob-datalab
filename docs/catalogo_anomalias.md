@@ -55,6 +55,28 @@ con la estructura definida en el Anexo B del encargo.
   capitalización natural (texto libre), una variante podría coincidir
   por casualidad con el original; se acepta como caso límite poco
   probable con los campos usados actualmente.
+- **Interacciones entre anomalías**: se mantiene la granularidad por
+  celda (varias anomalías pueden coexistir en una fila si tocan campos
+  distintos). Se descartó bloquear por fila entera porque el documento
+  solo pide evitar la misma celda, y permite probar filas con varios
+  errores. Si el emparejamiento en la evaluación (Día 10) da problemas,
+  bastaría con cambiar la comprobación de candidatos.
+- **Bloqueo de celdas de referencia** (DQ_07, DQ_08, DQ_12): además de
+  su campo principal, marcan como usada la celda de la que dependen.
+- **DQ_11 solo elimina ejecuciones intermedias y solo en backups**: un
+  hueco al principio o al final de un trabajo no se distingue de un
+  trabajo que empezó más tarde o terminó antes. El emparejamiento en la
+  evaluación será por cliente + trabajo + fecha, no por `row_id`.
+- **DQ_12 solo cubre duraciones** (30-180 días de desproporción). Los
+  valores numéricos extremos quedan fuera por ahora.
+- **DQ_13 define "huérfano" por rango de IDs**: sin tabla maestra de
+  técnicos, el catálogo lo fija el propio generador
+  (`MAX_TECHNICIAN_ID`, constante compartida).
+- **DQ_14 simula la mala codificación** sustituyendo caracteres por
+  secuencias ilegibles conocidas, en vez de recodificar texto (el texto
+  generado es ASCII y no cambiaría).
+- **DQ_11 y DQ_12 no se aplican a tickets, y DQ_13 tampoco a backups**,
+  por no tener sentido de negocio en esa plantilla.
 
 ## Detalle por anomalía
 
@@ -147,4 +169,70 @@ letra). El valor sigue siendo semánticamente el mismo para un lector
 humano, pero rompe comparaciones exactas de texto. No se comprueba si
 la variante generada coincide por casualidad con el valor original.
 
-*(se rellena al implementarla)*
+### DQ_11 — Hueco temporal
+
+Elimina ejecuciones **intermedias** de trabajos recurrentes (nunca la
+primera ni la última de un trabajo, para que el hueco tenga una
+ejecución antes y otra después). Solo aplica a `backups`; con otra
+plantilla falla con mensaje explícito. La estructura de los trabajos
+se calcula sobre el dataset limpio original (`ctx.original_df`), no
+sobre el dataset en curso, porque otras anomalías (DQ01, DQ10) pueden
+haber alterado `job_name`.
+
+En el manifiesto, `row_id` es la fila eliminada (tomada de
+`frozen_ids`), `field` es `scheduled_at`, `original_value` es la fecha
+eliminada y `related_fields` es `["client_id", "job_name"]`.
+**Consecuencia para el auditor y el evaluador:** esa fila ya no existe
+en `dirty.csv`, así que el auditor solo puede detectar el hueco (fecha
+esperada sin ejecución en un trabajo recurrente), y el evaluador debe
+emparejar DQ_11 por cliente + trabajo + fecha, recuperando cliente y
+trabajo desde `clean.csv` a partir del `row_id`.
+
+### DQ_12 — Valor extremo
+
+Alarga una duración hasta un valor desproporcionado: el campo de fin
+queda entre 30 y 180 días después del campo de inicio
+(`EXTREME_DURATION_DAYS`). Requiere `fields: [campo_fin, campo_inicio]`.
+La duración sigue siendo cronológicamente válida (fin posterior a
+inicio), lo que la distingue de DQ_07. El "criterio" del catálogo es
+este umbral, reconstruible desde `original_value`, `altered_value` y
+`related_fields`. De momento solo cubre duraciones, no valores
+numéricos extremos.
+
+### DQ_13 — Referencia huérfana
+
+Sustituye un identificador de referencia por otro con formato válido
+pero inexistente (por ejemplo, `TEC-051` a `TEC-999` cuando los
+técnicos válidos son `TEC-001` a `TEC-050`). Solo soporta campos con un
+catálogo de referencia definido (`REFERENCIAS_BY_TEMPLATE`,
+actualmente solo `technician_id` en tickets); `client_id` no tiene
+tabla maestra, así que no puede ser huérfano. El rango válido
+(`MAX_TECHNICIAN_ID`) se comparte con el generador para no duplicar el
+número.
+
+### DQ_14 — Codificación dañada
+
+Sustituye entre 1 y 3 caracteres de un campo de texto por secuencias
+típicas de mala codificación (`Ã©`, `Ã±`, `â€™`, `�`...). Es una
+simulación, no un mojibake real: los textos de Faker son ASCII, y la
+conversión real no cambiaría nada. El texto ilegible resultante queda
+en `altered_value` del manifiesto como evidencia. Solo aplica a campos
+de texto.
+
+## Interacciones entre anomalías
+
+- **Granularidad por celda:** dos anomalías pueden tocar campos
+  distintos de la misma fila, pero nunca la misma celda. Las anomalías
+  de fila completa (DQ_02, DQ_11) solo eligen filas que ninguna otra
+  anomalía haya tocado, y viceversa (`ctx.fila_libre`).
+- **Celdas de referencia:** DQ_07, DQ_08 y DQ_12 comprueban y bloquean
+  también su celda de referencia (`created_at`, `status`,
+  `started_at`), para que otra anomalía no la reformatee o altere
+  después.
+- **Filas donantes (DQ_03):** la fila cuyo ID se copia queda bloqueada,
+  para que DQ_11 no la elimine ni DQ_02 la duplique.
+- **Índices nuevos (DQ_02):** las filas duplicadas reciben índices
+  desde un contador propio (`ctx.next_index`), sin renumerar las
+  existentes ni reutilizar el índice de una fila eliminada por DQ_11.
+- **Orden:** el resultado no depende del orden en que aparezcan las
+  anomalías en el YAML.
