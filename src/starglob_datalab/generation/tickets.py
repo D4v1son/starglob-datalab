@@ -10,6 +10,7 @@ from starglob_datalab.generation.schemas import (
 
 
 TECID_CHANCE_ON_OPEN = 80
+MAX_TECHNICIAN_ID = 50  # técnicos válidos: TEC-001 ... TEC-050
 
 def generate_tickets(config: GeneratorConfig) -> pd.DataFrame:
     """
@@ -47,10 +48,10 @@ def generate_tickets(config: GeneratorConfig) -> pd.DataFrame:
         technician_id = None
         if status != TicketStatus.OPEN:
             first_response_at = created_at + timedelta(minutes=fake.random_int(5, 480))
-            technician_id = f"TEC-{fake.random_int(min=1, max=50):03d}"
+            technician_id = f"TEC-{fake.random_int(min=1, max=MAX_TECHNICIAN_ID):03d}"
         elif fake.boolean(chance_of_getting_true=TECID_CHANCE_ON_OPEN):
             # open, pero ya asignado preventivamente (sin responder aún)
-            technician_id = f"TEC-{fake.random_int(min=1, max=50):03d}"
+            technician_id = f"TEC-{fake.random_int(min=1, max=MAX_TECHNICIAN_ID):03d}"
         
         closed_at = None
         satisfaction_score = None
