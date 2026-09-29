@@ -45,14 +45,14 @@ DEPENDENCES_BY_TEMPLATE = {
 EXTREME_DURATION_DAYS = (30, 180)   # criterio de "duración desproporcionada"
 
 # campo -> (prefijo, primer ID válido, último ID válido), por plantilla
-REFERENCIAS_BY_TEMPLATE = {
+REFERENCES_BY_TEMPLATE = {
     "tickets": {
         "technician_id": ("TEC", 1, MAX_TECHNICIAN_ID),
     },
     "backups": {},
 }
 
-SECUENCIAS_DANADAS = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
+DAMAGED_SECUENCES = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
 
 def _generar_valor_invalido(campo: str, ctx) -> str:
     enums_plantilla = FIELD_ENUMS_BY_TEMPLATE.get(ctx.template, {})
@@ -122,8 +122,6 @@ def apply_dq01(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntr
             injected_order=order,
         ))
     return df, entries
-
-# rules.py
 
 def apply_dq02(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntry]:
     """DQ_02 - Duplicado exacto: añade una copia idéntica de filas existentes."""
@@ -686,7 +684,7 @@ def apply_dq13(df: pd.DataFrame, row_id_col: str, cfg, ctx):
         raise ValueError("DQ_13 requiere 'fields' con el campo de referencia a corromper")
     campo = cfg.fields[0]
 
-    referencia = REFERENCIAS_BY_TEMPLATE.get(ctx.template, {}).get(campo)
+    referencia = REFERENCES_BY_TEMPLATE.get(ctx.template, {}).get(campo)
     if referencia is None:
         raise ValueError(f"DQ_13: no hay catálogo de referencia definido para el campo '{campo}'")
     prefijo, _, ultimo_valido = referencia
@@ -737,7 +735,7 @@ def _danar_codificacion(valor: str, rng) -> str:
     caracteres = list(valor)
     posiciones = rng.sample(range(len(caracteres)), min(rng.randint(1, 3), len(caracteres)))
     for pos in posiciones:
-        caracteres[pos] = rng.choice(SECUENCIAS_DANADAS)
+        caracteres[pos] = rng.choice(DAMAGED_SECUENCES)
     return "".join(caracteres)
 
 def apply_dq14(df: pd.DataFrame, row_id_col: str, cfg, ctx):

@@ -43,6 +43,16 @@ anomalía corrompe ese campo (ver DQ03).
 Consulta el [catálogo de anomalías](./docs/catalogo_anomalias.md) para el
 detalle de cada código implementado, su definición y ejemplo.
 
+El auditor (`audit/auditor.py`) es independiente del inyector: analiza
+cualquier CSV compatible con las plantillas, sin conocer el manifiesto,
+y emite hallazgos normalizados (`Finding`) con la misma estructura
+`row_id`/`field`/`severity`. Cada regla de auditoría usa el mismo código 
+`DQ_XX` que la anomalía que detecta, para poder compararse contra el 
+manifiesto en la evaluación.
+
+Consulta el [catálogo de reglas de auditoría](./docs/catalogo_auditoria.md)
+para el detalle de cada regla y sus limitaciones conocidas.
+
 ## Instalación
 
 ```powershell

@@ -6,7 +6,7 @@ from starglob_datalab.anomalies.injector import inject_anomalies
 import re
 import pytest
 from starglob_datalab.generation.tickets import MAX_TECHNICIAN_ID
-from starglob_datalab.anomalies.rules import SECUENCIAS_DANADAS
+from starglob_datalab.anomalies.rules import DAMAGED_SECUENCES
 
 
 def _config_tickets(anomalies=None, rows=200, seed=42):
@@ -315,7 +315,7 @@ def test_dq14_introduce_caracteres_ilegibles():
         fila = df_dirty[df_dirty["ticket_id"] == e.row_id]
         valor = fila["summary"].values[0]
         assert valor != e.original_value
-        assert any(secuencia in valor for secuencia in SECUENCIAS_DANADAS)
+        assert any(secuencia in valor for secuencia in DAMAGED_SECUENCES)
 
 
 def test_dq14_falla_en_campo_no_textual():
