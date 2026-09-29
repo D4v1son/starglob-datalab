@@ -202,3 +202,32 @@ desalinearía `frozen_ids` con DQ11 (sustituido por `next_index`).
 **Siguiente paso**: Día 9 - auditor: interfaz común de reglas,
 hallazgos y resúmenes, auditando ambos esquemas
 (`audit_results.json`).
+
+---
+
+## Día 9 - [2026-09-29]
+
+**Horas**: ~5h
+
+**Completado**: Interfaz común del auditor (`Finding`, patrón de
+registro de reglas con `partial`, `audit()`). Catálogo completo de
+reglas de auditoría DQ01-DQ14, independientes del inyector y aplicables
+a cualquier CSV compatible. Tests de integración (una regla por
+código, más cobertura sobre dataset limpio sin falsos positivos).
+Documentación del catálogo de auditoría y ampliación del README.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/c819dce88731db8a09e8d48f3e77de3715b570a0)
+
+**Decisiones**: `rule_code` coincide con el código `DQ_XX` para permitir
+comparación con el manifiesto. Fechas cargadas como texto para el
+auditor. Varias reglas (DQ_04, DQ_06, DQ_07, DQ_08, DQ_13, DQ_14)
+reutilizan los mismos catálogos de negocio que ya usa el inyector, para
+no definir la misma regla tres veces. DQ_11 y DQ_12 del auditor usan
+criterios propios (frecuencia inferida, umbral de 10 días) distintos de
+los parámetros usados por el inyector.
+
+**Bloqueos**: `Finding.row_id` definido como obligatorio,
+corregido a opcional para soportar DQ_11.
+
+**Siguiente paso**: Día 10 - evaluación: comparar hallazgos contra el
+manifiesto, calcular métricas (precisión, recall, F1) y resolver el
+emparejamiento especial de DQ_03 y DQ_11.
