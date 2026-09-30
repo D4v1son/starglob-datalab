@@ -231,3 +231,27 @@ corregido a opcional para soportar DQ_11.
 **Siguiente paso**: Día 10 - evaluación: comparar hallazgos contra el
 manifiesto, calcular métricas (precisión, recall, F1) y resolver el
 emparejamiento especial de DQ_03 y DQ_11.
+
+---
+
+## Día 10 - [2026-09-30]
+
+**Horas**: ~5h
+
+**Completado**: Evaluador (evaluate) con TP/FP/FN, precisión/recall/F1 
+por código de anomalía y global. Emparejamiento especial DQ_03 (por valor) 
+y DQ_11 (por rango de fechas, usando clean.csv). CLI `evaluate` y `audit` 
+conectados, los nuevos comandos se encuentran en la sección [Uso](/README.md/#uso) 
+del README.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/da836d53ad9fb516e90dccedf6b4788abd5e44e0)
+
+**Decisiones**: Bug real encontrado: DQ_03 no bloqueaba used_rows de su fila 
+objetivo, permitiendo que otra anomalía de celda (DQ_14) la tocara después y desincronizara el row_id visible del auditor respecto al manifiesto - corregido.
+
+**Bloqueos**: Actualmente el evaluador muestra un F1 inferior a 1 durante las
+pruebas prácticas (fuera de los tests), esto implica que o bien las anomalías
+se están pisando entre sí de alguna forma que escapa los test.
+
+**Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
+conocida e implementar inyección DQ 01 a DQ 05. Manifiesto validado con 
+fixtures.
