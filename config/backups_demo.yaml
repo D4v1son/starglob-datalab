@@ -26,7 +26,7 @@ anomalies:
     fields: [scheduled_at]
   - code: DQ_10
     count: 15
-    fields: [job_name]
+    fields: [client_id]
   - code: DQ_11
     count: 20
   - code: DQ_12

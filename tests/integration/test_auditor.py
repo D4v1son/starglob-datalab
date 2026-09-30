@@ -158,7 +158,7 @@ def test_dq11_detecta_hueco_temporal():
     ], rows=500)
     hallazgos = _por_regla(findings, "DQ_11")
     assert len(hallazgos) >= 1
-    assert all(h.row_id is None for h in hallazgos)
+    assert all("|" in h.row_id for h in hallazgos)
 
 
 # --- DQ_12 ---

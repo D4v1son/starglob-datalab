@@ -219,14 +219,14 @@ def test_dq09_conserva_la_misma_fecha_real():
 
 def test_dq10_altera_pero_conserva_contenido():
     _, df_dirty, entries = _generar_tickets([
-        AnomalyInjectionConfig(code="DQ_10", count=5, fields=["summary"])
+        AnomalyInjectionConfig(code="DQ_10", count=5, fields=["technician_id"])
     ])
     assert len(entries) == 5
     for e in entries:
         fila = df_dirty[df_dirty["ticket_id"] == e.row_id]
-        valor = fila["summary"].values[0]
+        valor = fila["technician_id"].values[0]
         assert valor != e.original_value
-        assert valor.strip().lower() == e.original_value.strip().lower()
+        assert valor.strip().upper() == e.original_value.strip().upper()
 
 # --- DQ_11 ---
 
@@ -364,7 +364,7 @@ def test_varias_anomalias_no_pisan_las_mismas_celdas():
         AnomalyInjectionConfig(code="DQ_06", count=4, fields=["satisfaction_score"]),
         AnomalyInjectionConfig(code="DQ_07", count=4, fields=["closed_at", "created_at"]),
         AnomalyInjectionConfig(code="DQ_09", count=4, fields=["created_at"]),
-        AnomalyInjectionConfig(code="DQ_10", count=4, fields=["summary"]),
+        AnomalyInjectionConfig(code="DQ_10", count=4, fields=["technician_id"]),
         AnomalyInjectionConfig(code="DQ_13", count=4, fields=["technician_id"]),
         AnomalyInjectionConfig(code="DQ_14", count=4, fields=["summary"]),
     ])

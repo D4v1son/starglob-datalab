@@ -32,7 +32,7 @@ anomalies:
     fields: [created_at]
   - code: DQ_10
     count: 20
-    fields: [summary]
+    fields: [priority]
   - code: DQ_13
     count: 15
     fields: [technician_id]

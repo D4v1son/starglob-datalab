@@ -57,6 +57,18 @@ TEXT_FIELDS_BY_TEMPLATE = {
 
 EXTREME_DURATION_THRESHOLD_DAYS = 10  # umbral de "desproporcionado", distinto del rango del inyector
 
+ID_PATTERNS_BY_TEMPLATE = {
+    "tickets": {
+        "ticket_id": r"TCK-\d{4}-\d{5}",
+        "client_id": r"CLI-\d{4}",
+        "technician_id": r"TEC-\d{3}",
+    },
+    "backups": {
+        "backup_id": r"BCK-\d{8}-\d{4}",
+        "client_id": r"CLI-\d{4}",
+    },
+}
+
 def check_required_fields(df: pd.DataFrame, row_id_col: str, campos_requeridos: list[str]):
     """DQ_01 — Completitud: detecta valores obligatorios ausentes."""
     for idx in df.index:
@@ -228,6 +240,7 @@ def check_date_format(df: pd.DataFrame, row_id_col: str, template: str):
 
 def check_text_hygiene(df: pd.DataFrame, row_id_col: str, template: str):
     """DQ_10 - Validez: detecta espacios sobrantes o capitalización inconsistente en campos categóricos."""
+    # parte 1: campos categóricos (ya existente)
     campos_enum = FIELD_ENUMS_BY_TEMPLATE.get(template, {})
     for campo, enum_cls in campos_enum.items():
         valores_validos = {e.value for e in enum_cls}
@@ -244,6 +257,25 @@ def check_text_hygiene(df: pd.DataFrame, row_id_col: str, template: str):
                     "observed_value": valor,
                     "expected": f"'{limpio}' sin espacios ni capitalización distinta",
                     "message": f"Valor '{valor}' tiene formato inconsistente (¿'{limpio}'?)",
+                }
+    
+    # parte 2: campos con patrón fijo (IDs)
+    patrones = ID_PATTERNS_BY_TEMPLATE.get(template, {})
+    for campo, patron in patrones.items():
+        regex = re.compile(rf"^{patron}$")
+        for idx in df.index:
+            valor = df.at[idx, campo]
+            if pd.isna(valor) or not isinstance(valor, str):
+                continue
+            limpio = valor.strip().upper()
+            if not regex.match(valor) and regex.match(limpio):
+                yield {
+                    "severity": "info",
+                    "row_id": df.at[idx, row_id_col],
+                    "field": campo,
+                    "observed_value": valor,
+                    "expected": f"formato '{patron}' sin espacios ni capitalización distinta",
+                    "message": f"Valor '{valor}' no sigue el formato esperado de '{campo}'",
                 }
 
 def check_continuity(df: pd.DataFrame, row_id_col: str, template: str):
@@ -272,9 +304,9 @@ def check_continuity(df: pd.DataFrame, row_id_col: str, template: str):
             if hueco_dias >= frecuencia_esperada * 2:
                 yield {
                     "severity": "warning",
-                    "row_id": None,  # la fila que faltaría no existe, no hay row_id que dar
+                    "row_id": f"{client_id}|{job_name}",  # la fila que faltaría no existe, no hay row_id que dar así que guardamos la de sus padres
                     "field": "scheduled_at",
-                    "observed_value": f"hueco de {hueco_dias} días entre {anterior.date()} y {siguiente.date()}",
+                    "observed_value": f"{anterior.isoformat()}|{siguiente.isoformat()}",  # usaremos este intervalo en el evaluador
                     "expected": f"ejecución cada {frecuencia_esperada} días para client_id={client_id}, job_name={job_name}",
                     "message": f"Falta al menos una ejecución esperada entre {anterior.date()} y {siguiente.date()}",
                 }

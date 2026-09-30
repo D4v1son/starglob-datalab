@@ -54,6 +54,11 @@ REFERENCES_BY_TEMPLATE = {
 
 DAMAGED_SECUENCES = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
 
+FREE_TEXT_FIELDS_BY_TEMPLATE = {
+    "tickets": ["summary"],
+    "backups": ["error_message"],
+}
+
 def _generar_valor_invalido(campo: str, ctx) -> str:
     enums_plantilla = FIELD_ENUMS_BY_TEMPLATE.get(ctx.template, {})
     enum_cls = enums_plantilla.get(campo)
@@ -201,7 +206,9 @@ def apply_dq03(df: pd.DataFrame, row_id_col: str, cfg, ctx):
 
         df.at[objetivo_idx, row_id_col] = id_duplicado
         ctx.used_cells.add((row_id, row_id_col))
-        ctx.used_rows.add(id_duplicado)   # el donante no puede ser borrado (DQ11) ni duplicado (DQ02)
+        ctx.used_rows.add(row_id)       # la fila objetivo queda bloqueada
+        ctx.used_rows.add(id_duplicado) # el donante no puede ser borrado (DQ11) ni duplicado (DQ02)
+
 
         order, anomaly_id = ctx.next_entry_ids()
         entries.append(ManifestEntry(
@@ -525,6 +532,14 @@ def apply_dq10(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     if not cfg.fields:
         raise ValueError("DQ_10 requiere 'fields' con el campo de texto a corromper")
     campo = cfg.fields[0]
+    
+    texto_libre = FREE_TEXT_FIELDS_BY_TEMPLATE.get(ctx.template, [])
+    if campo in texto_libre or campo == row_id_col:
+        raise ValueError(
+            f"DQ_10: '{campo}' es texto libre o el identificador de fila; "
+            f"no aplica (la variación de formato ahí no es una anomalía real)"
+        )
+    
     n = _resolve_count(cfg, len(df))
 
     candidatos = [

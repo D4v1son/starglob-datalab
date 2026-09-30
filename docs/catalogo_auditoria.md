@@ -126,3 +126,9 @@ realmente usa.
 Comprueba, en campos de texto, la presencia de cualquiera de las
 secuencias típicas de mala codificación que también usa el inyector
 para simularla.
+
+## Evaluación
+DQ_03 se empareja por valor duplicado (altered_value/observed_value),
+no por row_id. DQ_11 se empareja por (client_id|job_name) + fecha
+eliminada dentro del rango del hueco reportado, usando clean.csv.
+Métricas con denominador 0 devuelven 0.0.

@@ -77,17 +77,38 @@ deactivate
 ```
 ## Uso
 
-Comprobar versión del programa:
+### Comprobar versión del programa:
 ```powershell
 python -m starglob_datalab --version
 ```
 
-Generar un dataset limpio:
+### Generar un dataset limpio:
 ```powershell
 python -m starglob_datalab generate --config config/tickets_demo.yaml
 ```
 
-Esto crea `output/tickets_demo/tickets_clean.csv`, reproducible: la misma
-configuración y semilla siempre produce el mismo resultado.
+Esto crea `output/tickets_demo/clean.csv`, reproducible: la misma
+configuración y semilla siempre produce el mismo resultado. Además, de haber 
+añadido anomalías a la generación, se generará un archivo
+`output/tickets_demo/dirty.csv` y un manifesto con los cambios de cada 
+anomalía en `output/tickets_demo/truth_manifest.jsonl`.
 
-*(los comandos `audit` y `evaluate` se documentarán cuando estén implementados)*
+### Auditar un dataset:
+```powershell
+python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets [--output <direccion/nombre>.json]
+```
+Con este comando se genera `output/tickets_demo/audit_results.json` con
+las anomalías que el auditor haya encontrado. **CLI `audit` usa `--template` 
+en vez de `--rules`**: nuestras reglas de auditoría están fijas por plantilla 
+en código (`RULES_BY_TEMPLATE`). Actualmente solo existen dos plantillas:
+`tickets` y `backups`. Es posible especificar una nueva ruta y nombre para 
+el archivo mediante `--output`.
+
+### Evaluar los resultados:
+```powershell
+python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets [--output <nombre>.json]
+```
+
+Por defecto, se generará el autput como `evaluation_results.json`, pero
+se puede modificar con `--output`. El archivo se genera en la carpeta desde 
+la que se ejecute el comando.

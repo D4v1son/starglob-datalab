@@ -44,8 +44,6 @@ APPLICATORS = {
     "DQ_14": rules.apply_dq14,
 }
 
-# injector.py
-
 def inject_anomalies(df, row_id_col: str, config, run_id: str):
     """
     Aplica sobre 'df' (debe ser ya una copia del dataset limpio) todas las
