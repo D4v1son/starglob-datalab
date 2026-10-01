@@ -122,7 +122,9 @@ def check_valid_category(df: pd.DataFrame, row_id_col: str, template: str):
         valores_validos = {e.value for e in enum_cls}
         for idx in df.index:
             valor = df.at[idx, campo]
-            if pd.notna(valor) and valor not in valores_validos:
+            if pd.isna(valor):
+                continue
+            if valor not in valores_validos and str(valor).strip().lower() not in valores_validos: # recuerda que DQ_10 puede añadir espacios y fallos de mayusc y minusc
                 yield {
                     "severity": "error",
                     "row_id": df.at[idx, row_id_col],

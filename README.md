@@ -84,7 +84,11 @@ python -m starglob_datalab --version
 
 ### Generar un dataset limpio:
 ```powershell
+python -m starglob_datalab generate --config config/<dataset>.yaml
+
+# ejemplo:
 python -m starglob_datalab generate --config config/tickets_demo.yaml
+python -m starglob_datalab generate --config config/backups_demo.yaml
 ```
 
 Esto crea `output/tickets_demo/clean.csv`, reproducible: la misma
@@ -95,18 +99,33 @@ anomalía en `output/tickets_demo/truth_manifest.jsonl`.
 
 ### Auditar un dataset:
 ```powershell
-python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets [--output <direccion/nombre>.json]
+python -m starglob_datalab audit --input output/<dataset>/dirty.csv --template <tickets|backups> [--output <direccion/nombre>.json] [--run-id <run_id>]
+
+# ejemplo:
+python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets [--output <direccion/nombre>.json] [--run-id <run_id>]
+python -m starglob_datalab audit --input output/backups_demo/dirty.csv --template backups [--output <direccion/nombre>.json] [--run-id <run_id>]
 ```
 Con este comando se genera `output/tickets_demo/audit_results.json` con
 las anomalías que el auditor haya encontrado. **CLI `audit` usa `--template` 
 en vez de `--rules`**: nuestras reglas de auditoría están fijas por plantilla 
 en código (`RULES_BY_TEMPLATE`). Actualmente solo existen dos plantillas:
 `tickets` y `backups`. Es posible especificar una nueva ruta y nombre para 
-el archivo mediante `--output`.
+el archivo mediante `--output`. Por defecto se genera en el nuevo archivo en 
+el mismo directorio que el input.
+
+Por defecto, la ejecución del auditor está ligada al manifiesto mediante un `run_id`, 
+de esta forma es más fácil comparar los resultados y almacenarlos sin que se 
+crucen con otras ejecuciones. Como es posible especificar un ``run_id`` para cada 
+ejecución concreta con el comando ``--run-id``. En caso de no especificar un nuevo
+identificador o de existir un manifiesto, se generará un nuevo identificador.
 
 ### Evaluar los resultados:
 ```powershell
+python -m starglob_datalab evaluate --clean output/<dataset>/clean.csv --dirty output/<dataset>/dirty.csv --manifest output/<dataset>/truth_manifest.jsonl --template <tickets|backups> [--output <nombre>.json]
+
+# ejemplo:
 python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets [--output <nombre>.json]
+python -m starglob_datalab evaluate --clean output/backups_demo/clean.csv --dirty output/backups_demo/dirty.csv --manifest output/backups_demo/truth_manifest.jsonl --template backups [--output <nombre>.json]
 ```
 
 Por defecto, se generará el autput como `evaluation_results.json`, pero

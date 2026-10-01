@@ -20,7 +20,8 @@ FIELD_ENUMS_BY_TEMPLATE = {
     },
 }
 
-VALORES_INVALIDOS_CANDIDATOS = ["urgent", "n/a", "unknown", "pendiente", "xx", "critical!!"]
+VALORES_INVALIDOS_CANDIDATOS = ["urgent", "unknown", "pendiente", "xx", "critical!!"]
+# quitado `n\a` ya que pandas lo vuelve valor nulo al leer csv y luego da problemas en la evaluación.
 
 RANGES_BY_TEMPLATE = {
     "tickets": {
@@ -558,12 +559,12 @@ def apply_dq10(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     df[campo] = df[campo].astype(object)
 
     def _ensuciar(valor: str, rng) -> str:
-        variantes = [
+        variantes = [v for v in[
             f"  {valor}",           # espacio al principio
             f"{valor}  ",           # espacio al final
             valor.upper(),          # todo mayúsculas
             valor.capitalize(),     # solo primera letra en mayúscula
-        ]
+        ]if v != valor] # no quiero que haga .upper() si ya está todo en mayúsculas
         return rng.choice(variantes)
 
     elegidos = ctx.rng.sample(candidatos, n)

@@ -72,7 +72,16 @@ def cmd_audit(args):
     # sin parse_dates: el auditor necesita las fechas como texto (DQ_09)
     df = pd.read_csv(args.input)
 
-    run_id = f"run_{uuid.uuid4().hex[:8]}"
+    if args.run_id: # en caso de querer enlazarlo con un manifiesto externo
+        run_id = args.run_id
+    else: # si queremos relacionarlo con las ejecuiones del manifiesto que hemos generado
+        manifest_path = Path(args.input).parent / "truth_manifest.jsonl"
+        if manifest_path.exists():
+            with open(manifest_path, encoding="utf-8") as f:
+                run_id = json.loads(f.readline())["run_id"]
+        else:
+            run_id = f"run_{uuid.uuid4().hex[:8]}"
+    
     findings = audit(df, row_id_col=row_id_col, template=args.template, run_id=run_id)
 
     output_path = args.output or str(Path(args.input).parent / "audit_results.json")
@@ -113,6 +122,7 @@ def main():
     audit_parser.add_argument("--input", required=True, help="Ruta al CSV a auditar (clean o dirty)")
     audit_parser.add_argument("--template", required=True, choices=["tickets", "backups"])
     audit_parser.add_argument("--output", help="Ruta de salida (por defecto, junto al input)")
+    audit_parser.add_argument("--run-id", dest="run_id", help="Vincula esta auditoría a una ejecución existente (opcional)") # esto es util si queremos auditar csv no artificiales
     audit_parser.set_defaults(func=cmd_audit)
     
     # comando evaluate, compara los resultados de audit con manifest y los csv

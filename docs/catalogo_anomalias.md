@@ -169,7 +169,7 @@ letra). El valor sigue siendo semánticamente el mismo para un lector
 humano, pero rompe comparaciones exactas de texto. No se comprueba si
 la variante generada coincide por casualidad con el valor original.
 
-### DQ_11 — Hueco temporal
+### DQ_11 &rarr; Hueco temporal
 
 Elimina ejecuciones **intermedias** de trabajos recurrentes (nunca la
 primera ni la última de un trabajo, para que el hueco tenga una
@@ -188,7 +188,7 @@ esperada sin ejecución en un trabajo recurrente), y el evaluador debe
 emparejar DQ_11 por cliente + trabajo + fecha, recuperando cliente y
 trabajo desde `clean.csv` a partir del `row_id`.
 
-### DQ_12 — Valor extremo
+### DQ_12 &rarr; Valor extremo
 
 Alarga una duración hasta un valor desproporcionado: el campo de fin
 queda entre 30 y 180 días después del campo de inicio
@@ -199,7 +199,7 @@ este umbral, reconstruible desde `original_value`, `altered_value` y
 `related_fields`. De momento solo cubre duraciones, no valores
 numéricos extremos.
 
-### DQ_13 — Referencia huérfana
+### DQ_13 &rarr; Referencia huérfana
 
 Sustituye un identificador de referencia por otro con formato válido
 pero inexistente (por ejemplo, `TEC-051` a `TEC-999` cuando los
@@ -210,7 +210,7 @@ tabla maestra, así que no puede ser huérfano. El rango válido
 (`MAX_TECHNICIAN_ID`) se comparte con el generador para no duplicar el
 número.
 
-### DQ_14 — Codificación dañada
+### DQ_14 &rarr; Codificación dañada
 
 Sustituye entre 1 y 3 caracteres de un campo de texto por secuencias
 típicas de mala codificación (`Ã©`, `Ã±`, `â€™`, `�`...). Es una

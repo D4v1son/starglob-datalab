@@ -207,7 +207,7 @@ hallazgos y resúmenes, auditando ambos esquemas
 
 ## Día 9 - [2026-09-29]
 
-**Horas**: ~5h
+**Horas**: ~6h
 
 **Completado**: Interfaz común del auditor (`Finding`, patrón de
 registro de reglas con `partial`, `audit()`). Catálogo completo de
