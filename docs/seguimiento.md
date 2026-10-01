@@ -255,3 +255,26 @@ se están pisando entre sí de alguna forma que escapa los test.
 **Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
 conocida e implementar inyección DQ 01 a DQ 05. Manifiesto validado con 
 fixtures.
+
+---
+
+## Día 11 - [2026-10-01]
+
+**Horas**: ~5h
+
+**Completado**: Arreglados múltiples errores relacionados con cómo el evaluador 
+puede distinguir entre los distintos casos. En particular la interacción entre 
+DQ_03/DQ_04/DQ_10/DQ_11.
+[COMMIT_1](https://github.com/D4v1son/starglob-datalab/commit/d1faca9abd4b2b34434e799f73d8d7152b4b8111)
+[COMMIT_2](https://github.com/D4v1son/starglob-datalab/commit/62a8cdcaea94f71e20144bcfdbb5d8fafe29c891)
+
+**Decisiones**: DQ_01 y DQ_09 son anomalías que pueden generar otras anomalías 
+DQ_11 por accidente. Esto en caso de se modifique alguno de los valores que DQ_11
+utiliza como identificador o las fechas de los mismos. El auditor reconoce todas 
+estas instancias nuevas.
+
+**Bloqueos**: Estoy trabajando en modificar el `evaluator.py` para que pueda reconocer 
+todas las instancias de cada anomalía. Actualmente me estoy peleando con DQ_11.
+
+**Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
+conocida e implementar inyección DQ 01 a DQ 05.
