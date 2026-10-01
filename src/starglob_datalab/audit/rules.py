@@ -286,7 +286,15 @@ def check_continuity(df: pd.DataFrame, row_id_col: str, template: str):
         return  # no aplica a tickets, igual que en el inyector
 
     df_temp = df.copy()
-    df_temp["_scheduled"] = pd.to_datetime(df_temp["scheduled_at"], errors="coerce")
+    
+    # Normalización de client_id: trim de espacios y conversión a mayúsculas
+    if "client_id" in df_temp.columns:
+        df_temp["client_id"] = (df_temp["client_id"].astype(str).str.strip().str.upper())
+
+    df_temp["_scheduled"] = pd.to_datetime(
+        df_temp["scheduled_at"], 
+        errors="coerce"
+    )
 
     for (client_id, job_name), grupo in df_temp.groupby(["client_id", "job_name"]):
         grupo = grupo.dropna(subset=["_scheduled"]).sort_values("_scheduled")
@@ -295,6 +303,9 @@ def check_continuity(df: pd.DataFrame, row_id_col: str, template: str):
 
         # la frecuencia esperada es la más común entre ejecuciones consecutivas
         deltas = grupo["_scheduled"].diff().dropna().dt.days
+        if deltas.empty or deltas.mode().empty:
+            continue
+
         frecuencia_esperada = deltas.mode().iloc[0]
         if frecuencia_esperada <= 0:
             continue
@@ -302,16 +313,24 @@ def check_continuity(df: pd.DataFrame, row_id_col: str, template: str):
         fechas = grupo["_scheduled"].tolist()
         for anterior, siguiente in zip(fechas, fechas[1:]):
             hueco_dias = (siguiente - anterior).days
-            # un hueco es múltiplo de la frecuencia esperada, pero mayor a 1 ocurrencia
+            
+            # Si el hueco es de al menos 2 veces la frecuencia, falta al menos 1 ejecución
             if hueco_dias >= frecuencia_esperada * 2:
-                yield {
-                    "severity": "warning",
-                    "row_id": f"{client_id}|{job_name}",  # la fila que faltaría no existe, no hay row_id que dar así que guardamos la de sus padres
-                    "field": "scheduled_at",
-                    "observed_value": f"{anterior.isoformat()}|{siguiente.isoformat()}",  # usaremos este intervalo en el evaluador
-                    "expected": f"ejecución cada {frecuencia_esperada} días para client_id={client_id}, job_name={job_name}",
-                    "message": f"Falta al menos una ejecución esperada entre {anterior.date()} y {siguiente.date()}",
-                }
+                # Calculamos cuántas instancias faltan en el intervalo
+                num_faltantes = hueco_dias // frecuencia_esperada - 1
+
+                for i in range(1, num_faltantes + 1):
+                    fecha_faltante = anterior + pd.Timedelta(
+                        days=i * frecuencia_esperada
+                    )
+                    yield {
+                        "severity": "warning",
+                        "row_id": f"{client_id}|{job_name}",
+                        "field": "scheduled_at",
+                        "observed_value": fecha_faltante.isoformat(),  # Instancia exacta que falta
+                        "expected": f"ejecución el {fecha_faltante.date()} (frecuencia: cada {frecuencia_esperada} días para client_id={client_id}, job_name={job_name})",
+                        "message": f"Falta la ejecución esperada del {fecha_faltante.date()} entre {anterior.date()} y {siguiente.date()}",
+                    }
 
 def check_extreme_duration(df: pd.DataFrame, row_id_col: str, template: str):
     """DQ_12 - Validez: detecta duraciones desproporcionadamente largas entre dos campos."""

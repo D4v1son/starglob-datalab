@@ -41,16 +41,21 @@ def _claves_manifiesto(entries: list, df_clean, row_id_col: str) -> dict[tuple, 
 
         if entry.code == "DQ_03":
             # el auditor solo ve el valor duplicado, no la identidad original
-            claves_por_codigo[entry.code].add((entry.altered_value, entry.field))
+            claves_por_codigo[entry.code].add((str(entry.altered_value).strip(), entry.field))
         
         elif entry.code == "DQ_11":
             # recupera client_id/job_name desde clean.csv usando el row_id congelado
             fila = df_clean[df_clean[row_id_col] == entry.row_id]
             if fila.empty:
                 continue
-            client_id = fila["client_id"].values[0]
-            job_name = fila["job_name"].values[0]
-            fecha_eliminada = pd.Timestamp(entry.original_value)
+            
+            # Normalizamos client_id (upper + strip) para alinearlo con el auditor
+            client_id = str(fila["client_id"].values[0]).strip().upper()
+            job_name = str(fila["job_name"].values[0]).strip()
+            
+            # Normalizamos la fecha a objeto date
+            fecha_eliminada = pd.Timestamp(entry.original_value).date()
+            
             claves_por_codigo[entry.code].add((f"{client_id}|{job_name}", fecha_eliminada))
 
         else:
@@ -81,51 +86,73 @@ def evaluate(entries: list, findings: list, df_clean, row_id_col: str) -> dict:
         
         for finding in hallazgos_codigo:
             if codigo == "DQ_03":
-                clave = (finding.row_id, finding.field)  # row_id del hallazgo = valor duplicado
+                clave = (str(finding.row_id).strip(), finding.field)    # row_id del hallazgo = valor duplicado
                 acierto = clave in esperadas
+                if acierto:
+                    esperadas_cubiertas.add(clave)
             elif codigo == "DQ_11":
-                anterior_str, siguiente_str = finding.observed_value.split("|")
-                anterior, siguiente = pd.Timestamp(anterior_str), pd.Timestamp(siguiente_str)
-                acierto = False
-                for clave_manifiesto in esperadas:
-                    ct_manifiesto, fecha_manifiesto = clave_manifiesto
-                    if ct_manifiesto == finding.row_id and anterior < fecha_manifiesto < siguiente:
-                        acierto = True
-                        clave = clave_manifiesto
-                        break
-                clave = clave if acierto else (finding.row_id, finding.observed_value)
+                # Convertimos la fecha del hallazgo a .date()
+                try:
+                    fecha_hallazgo = pd.Timestamp(finding.observed_value).date()
+                except Exception:
+                    fecha_hallazgo = finding.observed_value
+
+                # Normalizamos el row_id del hallazgo
+                row_id_hallazgo = str(finding.row_id).strip().upper()
+                clave = (row_id_hallazgo, fecha_hallazgo)
+
+                acierto = clave in esperadas
+                if acierto:
+                    esperadas_cubiertas.add(clave)
             else:
                 clave = (finding.row_id, finding.field)
                 acierto = clave in esperadas
+                if acierto:
+                    esperadas_cubiertas.add(clave)
             if acierto:
                 tp += 1
-                esperadas_cubiertas.add(clave)
-                matches.append(MatchResult(
-                    code=codigo, 
-                    row_id=finding.row_id, 
-                    field=finding.field, 
-                    kind="true_positive"
-                ))
+                matches.append(
+                    MatchResult(
+                        code=codigo,
+                        row_id=str(finding.row_id),
+                        field=finding.field,
+                        kind="true_positive",
+                    )
+                )
+            else:
+                fp += 1
+                matches.append(
+                    MatchResult(
+                        code=codigo,
+                        row_id=str(finding.row_id),
+                        field=finding.field,
+                        kind="false_positive",
+                    )
+                )
         
         fn = len(esperadas - esperadas_cubiertas)
         for clave_faltante in esperadas - esperadas_cubiertas:
-            matches.append(MatchResult(
-                code=codigo, 
-                row_id=str(clave_faltante[0]), 
-                field=str(clave_faltante[1]), 
-                kind="false_negative"
-            ))
+            matches.append(
+                MatchResult(
+                    code=codigo,
+                    row_id=str(clave_faltante[0]),
+                    field=str(clave_faltante[1]),
+                    kind="false_negative",
+                )
+            )
 
         precision, recall = _precision_recall(tp, fp, fn)
-        metricas_por_codigo.append(CodeMetrics(
-            code=codigo, 
-            true_positives=tp, 
-            false_positives=fp, 
-            false_negatives=fn,
-            precision=precision, 
-            recall=recall, 
-            f1=_f1(precision, recall),
-        ))
+        metricas_por_codigo.append(
+            CodeMetrics(
+                code=codigo,
+                true_positives=tp,
+                false_positives=fp,
+                false_negatives=fn,
+                precision=precision,
+                recall=recall,
+                f1=_f1(precision, recall),
+            )
+        )
         
         tp_total += tp
         fp_total += fp

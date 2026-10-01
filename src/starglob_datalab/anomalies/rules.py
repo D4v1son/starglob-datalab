@@ -186,8 +186,9 @@ def apply_dq03(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     candidatos = [
         idx for idx in df.index
         if idx in ctx.frozen_ids
-        and (ctx.frozen_ids[idx], row_id_col) not in ctx.used_cells
-        and ctx.frozen_ids[idx] not in ctx.used_rows
+        # and (ctx.frozen_ids[idx], row_id_col) not in ctx.used_cells
+        # and ctx.frozen_ids[idx] not in ctx.used_rows
+        and ctx.fila_libre(ctx.frozen_ids[idx])
     ]
     if len(candidatos) < n * 2:  # cada instancia necesita una fila "objetivo" y una "donante"
         raise ValueError(

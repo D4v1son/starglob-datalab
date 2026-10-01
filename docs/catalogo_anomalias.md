@@ -11,15 +11,15 @@ con la estructura definida en el Anexo B del encargo.
 | DQ_03 | Identificador duplicado | `ticket_id` repetido | <ul><li>- [x] Implementado</li></ul> |
 | DQ_04 | Categoría no permitida | `priority = "urgent"` | <ul><li>- [x] Implementado</li></ul> |
 | DQ_05 | Tipo incorrecto | `files_processed = "muchos"` | <ul><li>- [x] Implementado</li></ul> |
-| DQ_06 | Valor fuera de rango | `satisfaction_score = 9` | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_07 | Cronología imposible | `closed_at` anterior a `created_at` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_08 | Dependencia incumplida | `failed` sin `error_code` | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_09 | Formato inconsistente | Fecha en `DD/MM/YYYY` | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_10 | Espacios o capitalización | `status` con espacios extra | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_11 | Hueco temporal | Día esperado sin copia | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_12 | Valor extremo | Duración desproporcionada | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_13 | Referencia huérfana | `technician_id` inexistente | <ul><li>- [x] Pendiente</li></ul> |
-| DQ_14 | Codificación dañada | Caracteres ilegibles | <ul><li>- [x] Pendiente</li></ul> |
+| DQ_06 | Valor fuera de rango | `satisfaction_score = 9` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_07 | Cronología imposible | `closed_at` anterior a `created_at` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_08 | Dependencia incumplida | `failed` sin `error_code` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_09 | Formato inconsistente | Fecha en `DD/MM/YYYY` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_10 | Espacios o capitalización | `status` con espacios extra | <ul><li>- [x] Implementado</li></ul> |
+| DQ_11 | Hueco temporal | Día esperado sin copia | <ul><li>- [x] Implementado</li></ul> |
+| DQ_12 | Valor extremo | Duración desproporcionada | <ul><li>- [x] Implementado</li></ul> |
+| DQ_13 | Referencia huérfana | `technician_id` inexistente | <ul><li>- [x] Implementado</li></ul> |
+| DQ_14 | Codificación dañada | Caracteres ilegibles | <ul><li>- [x] Implementado</li></ul> |
 
 ## Decisiones propias
 
