@@ -98,7 +98,8 @@ def evaluate(entries: list, findings: list, df_clean, row_id_col: str) -> dict:
                     fecha_hallazgo = finding.observed_value
 
                 # Normalizamos el row_id del hallazgo
-                row_id_hallazgo = str(finding.row_id).strip().upper()
+                cid_part, job_part = str(finding.row_id).split("|", 1)
+                row_id_hallazgo = f"{cid_part.strip().upper()}|{job_part.strip()}"
                 clave = (row_id_hallazgo, fecha_hallazgo)
 
                 acierto = clave in esperadas

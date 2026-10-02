@@ -188,6 +188,17 @@ esperada sin ejecución en un trabajo recurrente), y el evaluador debe
 emparejar DQ_11 por cliente + trabajo + fecha, recuperando cliente y
 trabajo desde `clean.csv` a partir del `row_id`.
 
+**DQ_11 es sensible a cualquier anomalía que toque `scheduled_at`**:
+si otra anomalía (DQ_01, DQ_09, o cualquier futura) vacía, reformatea
+o corrompe `scheduled_at` en una fila, `check_continuity` la descarta
+(`dropna`) o la interpreta mal, generando un hueco real que el
+auditor detecta correctamente pero que no corresponde a ninguna
+instancia de DQ_11 del manifiesto. El evaluador lo cuenta como falso
+positivo de DQ_11, aunque el auditor está haciendo su trabajo bien:
+es un efecto colateral genuino de combinar varias anomalías sobre el
+mismo campo del que depende la continuidad, no un fallo de detección
+ni de emparejamiento.
+
 ### DQ_12 &rarr; Valor extremo
 
 Alarga una duración hasta un valor desproporcionado: el campo de fin
@@ -236,3 +247,15 @@ de texto.
   existentes ni reutilizar el índice de una fila eliminada por DQ_11.
 - **Orden:** el resultado no depende del orden en que aparezcan las
   anomalías en el YAML.
+- **Efecto colateral de otras anomalías sobre DQ_11**: no se ha
+  restringido qué anomalías pueden tocar `scheduled_at` en backups.
+  Combinar DQ_01/DQ_09 (u otras) sobre ese campo junto con DQ_11 en el
+  mismo YAML reduce artificialmente la precisión de DQ_11 en la
+  evaluación, sin que sea un error del sistema — es un resultado
+  esperable al generar datos con múltiples tipos de problemas de
+  calidad coexistiendo, similar a lo que ocurriría en datos reales.
+- **Ambigüedad día/mes en fechas reformateadas (DQ_07, DQ_12)**:
+  `pd.Timestamp` interpreta por defecto `DD/MM/YYYY` como mes/día
+  cuando el día es ≤12, generando desplazamientos de fecha silenciosos
+  al combinar con DQ_09. Corregido usando `pd.to_datetime(...,
+  dayfirst=True)` en ambas reglas.
