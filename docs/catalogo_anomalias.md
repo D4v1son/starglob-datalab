@@ -1,4 +1,4 @@
-# Catálogo de anomalías &rarr; Starglob DataLab
+# Catálogo de anomalías - Starglob DataLab
 
 Cada anomalía se identifica por un código `DQ_XX`. El manifiesto
 (`truth_manifest.jsonl`) registra una línea por cada instancia inyectada,
@@ -11,15 +11,15 @@ con la estructura definida en el Anexo B del encargo.
 | DQ_03 | Identificador duplicado | `ticket_id` repetido | <ul><li>- [x] Implementado</li></ul> |
 | DQ_04 | Categoría no permitida | `priority = "urgent"` | <ul><li>- [x] Implementado</li></ul> |
 | DQ_05 | Tipo incorrecto | `files_processed = "muchos"` | <ul><li>- [x] Implementado</li></ul> |
-| DQ_06 | Valor fuera de rango | `satisfaction_score = 9` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_07 | Cronología imposible | `closed_at` anterior a `created_at` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_08 | Dependencia incumplida | `failed` sin `error_code` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_09 | Formato inconsistente | Fecha en `DD/MM/YYYY` | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_10 | Espacios o capitalización | `status` con espacios extra | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_11 | Hueco temporal | Día esperado sin copia | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_12 | Valor extremo | Duración desproporcionada | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_13 | Referencia huérfana | `technician_id` inexistente | <ul><li>- [ ] Pendiente</li></ul> |
-| DQ_14 | Codificación dañada | Caracteres ilegibles | <ul><li>- [ ] Pendiente</li></ul> |
+| DQ_06 | Valor fuera de rango | `satisfaction_score = 9` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_07 | Cronología imposible | `closed_at` anterior a `created_at` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_08 | Dependencia incumplida | `failed` sin `error_code` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_09 | Formato inconsistente | Fecha en `DD/MM/YYYY` | <ul><li>- [x] Implementado</li></ul> |
+| DQ_10 | Espacios o capitalización | `status` con espacios extra | <ul><li>- [x] Implementado</li></ul> |
+| DQ_11 | Hueco temporal | Día esperado sin copia | <ul><li>- [x] Implementado</li></ul> |
+| DQ_12 | Valor extremo | Duración desproporcionada | <ul><li>- [x] Implementado</li></ul> |
+| DQ_13 | Referencia huérfana | `technician_id` inexistente | <ul><li>- [x] Implementado</li></ul> |
+| DQ_14 | Codificación dañada | Caracteres ilegibles | <ul><li>- [x] Implementado</li></ul> |
 
 ## Decisiones propias
 
@@ -169,7 +169,7 @@ letra). El valor sigue siendo semánticamente el mismo para un lector
 humano, pero rompe comparaciones exactas de texto. No se comprueba si
 la variante generada coincide por casualidad con el valor original.
 
-### DQ_11 — Hueco temporal
+### DQ_11 &rarr; Hueco temporal
 
 Elimina ejecuciones **intermedias** de trabajos recurrentes (nunca la
 primera ni la última de un trabajo, para que el hueco tenga una
@@ -188,7 +188,18 @@ esperada sin ejecución en un trabajo recurrente), y el evaluador debe
 emparejar DQ_11 por cliente + trabajo + fecha, recuperando cliente y
 trabajo desde `clean.csv` a partir del `row_id`.
 
-### DQ_12 — Valor extremo
+**DQ_11 es sensible a cualquier anomalía que toque `scheduled_at`**:
+si otra anomalía (DQ_01, DQ_09, o cualquier futura) vacía, reformatea
+o corrompe `scheduled_at` en una fila, `check_continuity` la descarta
+(`dropna`) o la interpreta mal, generando un hueco real que el
+auditor detecta correctamente pero que no corresponde a ninguna
+instancia de DQ_11 del manifiesto. El evaluador lo cuenta como falso
+positivo de DQ_11, aunque el auditor está haciendo su trabajo bien:
+es un efecto colateral genuino de combinar varias anomalías sobre el
+mismo campo del que depende la continuidad, no un fallo de detección
+ni de emparejamiento.
+
+### DQ_12 &rarr; Valor extremo
 
 Alarga una duración hasta un valor desproporcionado: el campo de fin
 queda entre 30 y 180 días después del campo de inicio
@@ -199,7 +210,7 @@ este umbral, reconstruible desde `original_value`, `altered_value` y
 `related_fields`. De momento solo cubre duraciones, no valores
 numéricos extremos.
 
-### DQ_13 — Referencia huérfana
+### DQ_13 &rarr; Referencia huérfana
 
 Sustituye un identificador de referencia por otro con formato válido
 pero inexistente (por ejemplo, `TEC-051` a `TEC-999` cuando los
@@ -210,7 +221,7 @@ tabla maestra, así que no puede ser huérfano. El rango válido
 (`MAX_TECHNICIAN_ID`) se comparte con el generador para no duplicar el
 número.
 
-### DQ_14 — Codificación dañada
+### DQ_14 &rarr; Codificación dañada
 
 Sustituye entre 1 y 3 caracteres de un campo de texto por secuencias
 típicas de mala codificación (`Ã©`, `Ã±`, `â€™`, `�`...). Es una
@@ -236,3 +247,15 @@ de texto.
   existentes ni reutilizar el índice de una fila eliminada por DQ_11.
 - **Orden:** el resultado no depende del orden en que aparezcan las
   anomalías en el YAML.
+- **Efecto colateral de otras anomalías sobre DQ_11**: no se ha
+  restringido qué anomalías pueden tocar `scheduled_at` en backups.
+  Combinar DQ_01/DQ_09 (u otras) sobre ese campo junto con DQ_11 en el
+  mismo YAML reduce artificialmente la precisión de DQ_11 en la
+  evaluación, sin que sea un error del sistema — es un resultado
+  esperable al generar datos con múltiples tipos de problemas de
+  calidad coexistiendo, similar a lo que ocurriría en datos reales.
+- **Ambigüedad día/mes en fechas reformateadas (DQ_07, DQ_12)**:
+  `pd.Timestamp` interpreta por defecto `DD/MM/YYYY` como mes/día
+  cuando el día es ≤12, generando desplazamientos de fecha silenciosos
+  al combinar con DQ_09. Corregido usando `pd.to_datetime(...,
+  dayfirst=True)` en ambas reglas.

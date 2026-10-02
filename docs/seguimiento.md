@@ -202,3 +202,79 @@ desalinearía `frozen_ids` con DQ11 (sustituido por `next_index`).
 **Siguiente paso**: Día 9 - auditor: interfaz común de reglas,
 hallazgos y resúmenes, auditando ambos esquemas
 (`audit_results.json`).
+
+---
+
+## Día 9 - [2026-09-29]
+
+**Horas**: ~6h
+
+**Completado**: Interfaz común del auditor (`Finding`, patrón de
+registro de reglas con `partial`, `audit()`). Catálogo completo de
+reglas de auditoría DQ01-DQ14, independientes del inyector y aplicables
+a cualquier CSV compatible. Tests de integración (una regla por
+código, más cobertura sobre dataset limpio sin falsos positivos).
+Documentación del catálogo de auditoría y ampliación del README.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/c819dce88731db8a09e8d48f3e77de3715b570a0)
+
+**Decisiones**: `rule_code` coincide con el código `DQ_XX` para permitir
+comparación con el manifiesto. Fechas cargadas como texto para el
+auditor. Varias reglas (DQ_04, DQ_06, DQ_07, DQ_08, DQ_13, DQ_14)
+reutilizan los mismos catálogos de negocio que ya usa el inyector, para
+no definir la misma regla tres veces. DQ_11 y DQ_12 del auditor usan
+criterios propios (frecuencia inferida, umbral de 10 días) distintos de
+los parámetros usados por el inyector.
+
+**Bloqueos**: `Finding.row_id` definido como obligatorio,
+corregido a opcional para soportar DQ_11.
+
+**Siguiente paso**: Día 10 - evaluación: comparar hallazgos contra el
+manifiesto, calcular métricas (precisión, recall, F1) y resolver el
+emparejamiento especial de DQ_03 y DQ_11.
+
+---
+
+## Día 10 - [2026-09-30]
+
+**Horas**: ~5h
+
+**Completado**: Evaluador (evaluate) con TP/FP/FN, precisión/recall/F1 
+por código de anomalía y global. Emparejamiento especial DQ_03 (por valor) 
+y DQ_11 (por rango de fechas, usando clean.csv). CLI `evaluate` y `audit` 
+conectados, los nuevos comandos se encuentran en la sección [Uso](/README.md/#uso) 
+del README.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/da836d53ad9fb516e90dccedf6b4788abd5e44e0)
+
+**Decisiones**: Bug real encontrado: DQ_03 no bloqueaba used_rows de su fila 
+objetivo, permitiendo que otra anomalía de celda (DQ_14) la tocara después y desincronizara el row_id visible del auditor respecto al manifiesto - corregido.
+
+**Bloqueos**: Actualmente el evaluador muestra un F1 inferior a 1 durante las
+pruebas prácticas (fuera de los tests), esto implica que o bien las anomalías
+se están pisando entre sí de alguna forma que escapa los test.
+
+**Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
+conocida e implementar inyección DQ 01 a DQ 05. Manifiesto validado con 
+fixtures.
+
+---
+
+## Día 11 - [2026-10-01]
+
+**Horas**: ~5h
+
+**Completado**: Arreglados múltiples errores relacionados con cómo el evaluador 
+puede distinguir entre los distintos casos. En particular la interacción entre 
+DQ_03/DQ_04/DQ_10/DQ_11.
+[COMMIT_1](https://github.com/D4v1son/starglob-datalab/commit/d1faca9abd4b2b34434e799f73d8d7152b4b8111)
+[COMMIT_2](https://github.com/D4v1son/starglob-datalab/commit/62a8cdcaea94f71e20144bcfdbb5d8fafe29c891)
+
+**Decisiones**: DQ_01 y DQ_09 son anomalías que pueden generar otras anomalías 
+DQ_11 por accidente. Esto en caso de se modifique alguno de los valores que DQ_11
+utiliza como identificador o las fechas de los mismos. El auditor reconoce todas 
+estas instancias nuevas.
+
+**Bloqueos**: Estoy trabajando en modificar el `evaluator.py` para que pueda reconocer 
+todas las instancias de cada anomalía. Actualmente me estoy peleando con DQ_11.
+
+**Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
+conocida e implementar inyección DQ 01 a DQ 05.

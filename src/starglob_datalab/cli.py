@@ -1,5 +1,7 @@
 import argparse
 import uuid
+import json
+import pandas as pd
 from pathlib import Path
 
 from importlib.metadata import version as pkg_version
@@ -7,7 +9,16 @@ from starglob_datalab.configuration import load_config
 from starglob_datalab.generation.tickets import generate_tickets
 from starglob_datalab.generation.backups import generate_backups
 from starglob_datalab.anomalies.injector import inject_anomalies
-from starglob_datalab.anomalies.manifest import write_manifest
+from starglob_datalab.anomalies.manifest import write_manifest, ManifestEntry
+from starglob_datalab.audit.auditor import audit
+from starglob_datalab.audit.finding import write_findings
+from starglob_datalab.evaluation.evaluator import evaluate
+
+
+ROW_ID_COL_BY_TEMPLATE = {
+    "tickets": "ticket_id",
+    "backups": "backup_id",
+}
 
 
 def cmd_generate(args):
@@ -53,6 +64,47 @@ def cmd_generate(args):
     # 
     # print(f"Generadas {len(df)} filas en {output_path}")
 
+def cmd_audit(args):
+    row_id_col = ROW_ID_COL_BY_TEMPLATE.get(args.template)
+    if row_id_col is None:
+        raise ValueError(f"Plantilla desconocida: '{args.template}'")
+
+    # sin parse_dates: el auditor necesita las fechas como texto (DQ_09)
+    df = pd.read_csv(args.input)
+
+    if args.run_id: # en caso de querer enlazarlo con un manifiesto externo
+        run_id = args.run_id
+    else: # si queremos relacionarlo con las ejecuiones del manifiesto que hemos generado
+        manifest_path = Path(args.input).parent / "truth_manifest.jsonl"
+        if manifest_path.exists():
+            with open(manifest_path, encoding="utf-8") as f:
+                run_id = json.loads(f.readline())["run_id"]
+        else:
+            run_id = f"run_{uuid.uuid4().hex[:8]}"
+    
+    findings = audit(df, row_id_col=row_id_col, template=args.template, run_id=run_id)
+
+    output_path = args.output or str(Path(args.input).parent / "audit_results.json")
+    write_findings(findings, output_path)
+
+    print(f"{len(findings)} hallazgos detectados, guardados en {output_path}")
+
+def cmd_evaluate(args):
+    df_clean = pd.read_csv(args.clean)
+    df_dirty = pd.read_csv(args.dirty)
+    with open(args.manifest) as f:
+        entries = [ManifestEntry(**json.loads(l)) for l in f]
+
+    row_id_col = ROW_ID_COL_BY_TEMPLATE[args.template]
+    findings = audit(df_dirty, row_id_col=row_id_col, template=args.template, run_id="run_audit")
+    resultado = evaluate(entries, findings, df_clean, row_id_col=row_id_col)
+
+    with open(args.output or "evaluation_results.json", "w") as f:
+        json.dump({
+            "metrics_by_code": [m.model_dump() for m in resultado["metrics_by_code"]],
+            "metrics_global": resultado["metrics_global"].model_dump(),
+        }, f, indent=2)
+    print(f"F1 global: {resultado['metrics_global'].f1:.2f}")
 
 
 def main():
@@ -60,9 +112,27 @@ def main():
     parser.add_argument("--version", action="version", version=f"starglob_datalab {pkg_version('starglob-datalab')}")
     subparsers = parser.add_subparsers(dest="command", required=True)
     
+    # comando generate, crea nuevos datos sintéticos
     generate_parser = subparsers.add_parser("generate", help="Genera un dataset limmpio")
     generate_parser.add_argument("--config", required=True, help="Ruta al YAML de configuración")
     generate_parser.set_defaults(func=cmd_generate)
+    
+    # comando audit, auditor de datos (no necesariamente sintéticos)
+    audit_parser = subparsers.add_parser("audit", help="Audita un dataset y genera hallazgos")
+    audit_parser.add_argument("--input", required=True, help="Ruta al CSV a auditar (clean o dirty)")
+    audit_parser.add_argument("--template", required=True, choices=["tickets", "backups"])
+    audit_parser.add_argument("--output", help="Ruta de salida (por defecto, junto al input)")
+    audit_parser.add_argument("--run-id", dest="run_id", help="Vincula esta auditoría a una ejecución existente (opcional)") # esto es util si queremos auditar csv no artificiales
+    audit_parser.set_defaults(func=cmd_audit)
+    
+    # comando evaluate, compara los resultados de audit con manifest y los csv
+    evaluate_parser = subparsers.add_parser("evaluate", help="Evalúa hallazgos contra el manifiesto")
+    evaluate_parser.add_argument("--clean", required=True)
+    evaluate_parser.add_argument("--dirty", required=True)
+    evaluate_parser.add_argument("--manifest", required=True)
+    evaluate_parser.add_argument("--template", required=True, choices=["tickets", "backups"])
+    evaluate_parser.add_argument("--output")
+    evaluate_parser.set_defaults(func=cmd_evaluate)
     
     args = parser.parse_args()
     args.func(args)

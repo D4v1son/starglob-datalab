@@ -20,7 +20,8 @@ FIELD_ENUMS_BY_TEMPLATE = {
     },
 }
 
-VALORES_INVALIDOS_CANDIDATOS = ["urgent", "n/a", "unknown", "pendiente", "xx", "critical!!"]
+VALORES_INVALIDOS_CANDIDATOS = ["urgent", "unknown", "pendiente", "xx", "critical!!"]
+# quitado `n\a` ya que pandas lo vuelve valor nulo al leer csv y luego da problemas en la evaluación.
 
 RANGES_BY_TEMPLATE = {
     "tickets": {
@@ -45,14 +46,19 @@ DEPENDENCES_BY_TEMPLATE = {
 EXTREME_DURATION_DAYS = (30, 180)   # criterio de "duración desproporcionada"
 
 # campo -> (prefijo, primer ID válido, último ID válido), por plantilla
-REFERENCIAS_BY_TEMPLATE = {
+REFERENCES_BY_TEMPLATE = {
     "tickets": {
         "technician_id": ("TEC", 1, MAX_TECHNICIAN_ID),
     },
     "backups": {},
 }
 
-SECUENCIAS_DANADAS = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
+DAMAGED_SECUENCES = ["Ã©", "Ã±", "Ã³", "â€™", "Ã¡", "�"]
+
+FREE_TEXT_FIELDS_BY_TEMPLATE = {
+    "tickets": ["summary"],
+    "backups": ["error_message"],
+}
 
 def _generar_valor_invalido(campo: str, ctx) -> str:
     enums_plantilla = FIELD_ENUMS_BY_TEMPLATE.get(ctx.template, {})
@@ -123,8 +129,6 @@ def apply_dq01(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntr
         ))
     return df, entries
 
-# rules.py
-
 def apply_dq02(df: pd.DataFrame, row_id_col: str, cfg, ctx) -> list[ManifestEntry]:
     """DQ_02 - Duplicado exacto: añade una copia idéntica de filas existentes."""
     n = _resolve_count(cfg, len(df))
@@ -182,8 +186,9 @@ def apply_dq03(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     candidatos = [
         idx for idx in df.index
         if idx in ctx.frozen_ids
-        and (ctx.frozen_ids[idx], row_id_col) not in ctx.used_cells
-        and ctx.frozen_ids[idx] not in ctx.used_rows
+        # and (ctx.frozen_ids[idx], row_id_col) not in ctx.used_cells
+        # and ctx.frozen_ids[idx] not in ctx.used_rows
+        and ctx.fila_libre(ctx.frozen_ids[idx])
     ]
     if len(candidatos) < n * 2:  # cada instancia necesita una fila "objetivo" y una "donante"
         raise ValueError(
@@ -203,7 +208,9 @@ def apply_dq03(df: pd.DataFrame, row_id_col: str, cfg, ctx):
 
         df.at[objetivo_idx, row_id_col] = id_duplicado
         ctx.used_cells.add((row_id, row_id_col))
-        ctx.used_rows.add(id_duplicado)   # el donante no puede ser borrado (DQ11) ni duplicado (DQ02)
+        ctx.used_rows.add(row_id)       # la fila objetivo queda bloqueada
+        ctx.used_rows.add(id_duplicado) # el donante no puede ser borrado (DQ11) ni duplicado (DQ02)
+
 
         order, anomaly_id = ctx.next_entry_ids()
         entries.append(ManifestEntry(
@@ -527,6 +534,14 @@ def apply_dq10(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     if not cfg.fields:
         raise ValueError("DQ_10 requiere 'fields' con el campo de texto a corromper")
     campo = cfg.fields[0]
+    
+    texto_libre = FREE_TEXT_FIELDS_BY_TEMPLATE.get(ctx.template, [])
+    if campo in texto_libre or campo == row_id_col:
+        raise ValueError(
+            f"DQ_10: '{campo}' es texto libre o el identificador de fila; "
+            f"no aplica (la variación de formato ahí no es una anomalía real)"
+        )
+    
     n = _resolve_count(cfg, len(df))
 
     candidatos = [
@@ -545,12 +560,12 @@ def apply_dq10(df: pd.DataFrame, row_id_col: str, cfg, ctx):
     df[campo] = df[campo].astype(object)
 
     def _ensuciar(valor: str, rng) -> str:
-        variantes = [
+        variantes = [v for v in[
             f"  {valor}",           # espacio al principio
             f"{valor}  ",           # espacio al final
             valor.upper(),          # todo mayúsculas
             valor.capitalize(),     # solo primera letra en mayúscula
-        ]
+        ]if v != valor] # no quiero que haga .upper() si ya está todo en mayúsculas
         return rng.choice(variantes)
 
     elegidos = ctx.rng.sample(candidatos, n)
@@ -686,7 +701,7 @@ def apply_dq13(df: pd.DataFrame, row_id_col: str, cfg, ctx):
         raise ValueError("DQ_13 requiere 'fields' con el campo de referencia a corromper")
     campo = cfg.fields[0]
 
-    referencia = REFERENCIAS_BY_TEMPLATE.get(ctx.template, {}).get(campo)
+    referencia = REFERENCES_BY_TEMPLATE.get(ctx.template, {}).get(campo)
     if referencia is None:
         raise ValueError(f"DQ_13: no hay catálogo de referencia definido para el campo '{campo}'")
     prefijo, _, ultimo_valido = referencia
@@ -737,7 +752,7 @@ def _danar_codificacion(valor: str, rng) -> str:
     caracteres = list(valor)
     posiciones = rng.sample(range(len(caracteres)), min(rng.randint(1, 3), len(caracteres)))
     for pos in posiciones:
-        caracteres[pos] = rng.choice(SECUENCIAS_DANADAS)
+        caracteres[pos] = rng.choice(DAMAGED_SECUENCES)
     return "".join(caracteres)
 
 def apply_dq14(df: pd.DataFrame, row_id_col: str, cfg, ctx):

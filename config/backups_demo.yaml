@@ -10,7 +10,7 @@ output_dir: output/backups_demo
 anomalies:
   - code: DQ_01
     count: 20
-    fields: [job_name]
+    fields: [source_system]
   - code: DQ_02
     count: 15
   - code: DQ_03
@@ -23,10 +23,10 @@ anomalies:
     fields: [error_code]
   - code: DQ_09
     count: 15
-    fields: [scheduled_at]
+    fields: [started_at]
   - code: DQ_10
     count: 15
-    fields: [job_name]
+    fields: [client_id]
   - code: DQ_11
     count: 20
   - code: DQ_12
