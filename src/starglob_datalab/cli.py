@@ -13,6 +13,7 @@ from starglob_datalab.anomalies.manifest import write_manifest, ManifestEntry
 from starglob_datalab.audit.auditor import audit
 from starglob_datalab.audit.finding import write_findings
 from starglob_datalab.evaluation.evaluator import evaluate
+from starglob_datalab.persistence.db import init_db, save_run, save_findings, save_metrics
 
 
 ROW_ID_COL_BY_TEMPLATE = {
@@ -43,12 +44,12 @@ def cmd_generate(args):
     if config.anomalies:
         # Cada ejecución, sin importar la semilla, tendrá un identificador único
         # Esto no afecta a la reproducibilidad del dirty_csv ni el manifiesto
-        run_id = f"run_{uuid.uuid4().hex[:8]}"
+        run_id = args.run_id or f"run_{uuid.uuid4().hex[:8]}"
         df_dirty, entries = inject_anomalies(
             df_clean.copy(), # El generador de anomalías travbaja con una copia para no alterar el original
-            row_id_col=row_id_col,
-            config=config,
-            run_id=run_id
+            row_id_col = row_id_col,
+            config = config,
+            run_id = run_id
         )
 
         dirty_path = output_dir / "dirty.csv"
@@ -86,6 +87,10 @@ def cmd_audit(args):
 
     output_path = args.output or str(Path(args.input).parent / "audit_results.json")
     write_findings(findings, output_path)
+    
+    conn = init_db("data/starglob.db")
+    save_run(conn, run_id, args.template, Path(args.input).stem, None, len(df))
+    save_findings(conn, run_id, findings)
 
     print(f"{len(findings)} hallazgos detectados, guardados en {output_path}")
 
@@ -94,6 +99,11 @@ def cmd_evaluate(args):
     df_dirty = pd.read_csv(args.dirty)
     with open(args.manifest) as f:
         entries = [ManifestEntry(**json.loads(l)) for l in f]
+    if args.run_id:
+        run_id = args.run_id
+    else:
+        with open(args.manifest, encoding="utf-8") as f:
+            run_id = json.loads(f.readline())["run_id"]
 
     row_id_col = ROW_ID_COL_BY_TEMPLATE[args.template]
     findings = audit(df_dirty, row_id_col=row_id_col, template=args.template, run_id="run_audit")
@@ -105,6 +115,9 @@ def cmd_evaluate(args):
             "metrics_global": resultado["metrics_global"].model_dump(),
         }, f, indent=2)
     print(f"F1 global: {resultado['metrics_global'].f1:.2f}")
+    
+    conn = init_db("data/starglob.db")
+    save_metrics(conn, run_id, resultado["metrics_by_code"], resultado["metrics_global"])
 
 
 def main():
@@ -115,6 +128,7 @@ def main():
     # comando generate, crea nuevos datos sintéticos
     generate_parser = subparsers.add_parser("generate", help="Genera un dataset limmpio")
     generate_parser.add_argument("--config", required=True, help="Ruta al YAML de configuración")
+    generate_parser.add_argument("--run-id", dest="run_id")
     generate_parser.set_defaults(func=cmd_generate)
     
     # comando audit, auditor de datos (no necesariamente sintéticos)
@@ -132,6 +146,7 @@ def main():
     evaluate_parser.add_argument("--manifest", required=True)
     evaluate_parser.add_argument("--template", required=True, choices=["tickets", "backups"])
     evaluate_parser.add_argument("--output")
+    evaluate_parser.add_argument("--run-id", dest="run_id")
     evaluate_parser.set_defaults(func=cmd_evaluate)
     
     args = parser.parse_args()

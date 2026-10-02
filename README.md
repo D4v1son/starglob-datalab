@@ -84,12 +84,13 @@ python -m starglob_datalab --version
 
 ### Generar un dataset limpio:
 ```powershell
-python -m starglob_datalab generate --config config/<dataset>.yaml
-
-# ejemplo:
-python -m starglob_datalab generate --config config/tickets_demo.yaml
-python -m starglob_datalab generate --config config/backups_demo.yaml
+python -m starglob_datalab generate --config config/<dataset>.yaml  [--run-id <run_id>]
 ```
+
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--config <path>` | **Sí** | Ruta al archivo de configuración YAML del dataset (`config/<dataset>.yaml`). |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
 
 Esto crea `output/tickets_demo/clean.csv`, reproducible: la misma
 configuración y semilla siempre produce el mismo resultado. Además, de haber 
@@ -97,14 +98,25 @@ añadido anomalías a la generación, se generará un archivo
 `output/tickets_demo/dirty.csv` y un manifesto con los cambios de cada 
 anomalía en `output/tickets_demo/truth_manifest.jsonl`.
 
+Se puede especificar un identificador particular para cada ejecución. De 
+no hacerlo se generará un identificador propio.
+
 ### Auditar un dataset:
 ```powershell
-python -m starglob_datalab audit --input output/<dataset>/dirty.csv --template <tickets|backups> [--output <direccion/nombre>.json] [--run-id <run_id>]
-
-# ejemplo:
-python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets [--output <direccion/nombre>.json] [--run-id <run_id>]
-python -m starglob_datalab audit --input output/backups_demo/dirty.csv --template backups [--output <direccion/nombre>.json] [--run-id <run_id>]
+python -m starglob_datalab audit \
+  --input output/<dataset>/dirty.csv \
+  --template <tickets|backups> \
+  [--output <direccion/nombre>.json] \
+  [--run-id <run_id>]
 ```
+
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--input <path>` | **Sí** | Ruta al CSV de entrada con los datos a auditar (`output/<dataset>/dirty.csv`). |
+| `--template <tipo>` | **Sí** | Tipo de plantilla a utilizar: `tickets` o `backups`. |
+| `--output <path>` | No | *(Opcional)* Ruta y nombre del archivo JSON donde se guardarán los resultados. |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
+
 Con este comando se genera `output/tickets_demo/audit_results.json` con
 las anomalías que el auditor haya encontrado. **CLI `audit` usa `--template` 
 en vez de `--rules`**: nuestras reglas de auditoría están fijas por plantilla 
@@ -121,13 +133,29 @@ identificador o de existir un manifiesto, se generará un nuevo identificador.
 
 ### Evaluar los resultados:
 ```powershell
-python -m starglob_datalab evaluate --clean output/<dataset>/clean.csv --dirty output/<dataset>/dirty.csv --manifest output/<dataset>/truth_manifest.jsonl --template <tickets|backups> [--output <nombre>.json]
-
-# ejemplo:
-python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets [--output <nombre>.json]
-python -m starglob_datalab evaluate --clean output/backups_demo/clean.csv --dirty output/backups_demo/dirty.csv --manifest output/backups_demo/truth_manifest.jsonl --template backups [--output <nombre>.json]
+python -m starglob_datalab evaluate \
+    --clean output/<dataset>/clean.csv \
+    --dirty output/<dataset>/dirty.csv \
+    --manifest output/<dataset>/truth_manifest.jsonl \
+    --template <tickets|backups> \
+    [--output <nombre>.json] \
+    [--run-id <run_id>]
 ```
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--clean <path>` | **Sí** | Ruta al CSV de datos limpios (`output/<dataset>/clean.csv`). |
+| `--dirty <path>` | **Sí** | Ruta al CSV de datos con errores (`output/<dataset>/dirty.csv`). |
+| `--manifest <path>` | **Sí** | Ruta al manifiesto JSONL (`output/<dataset>/truth_manifest.jsonl`). |
+| `--template <tipo>` | **Sí** | Tipo de plantilla a utilizar: `tickets` o `backups`. |
+| `--output <nombre>` | No | *(Opcional)* Nombre o ruta del archivo JSON de salida. |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
+
 
 Por defecto, se generará el autput como `evaluation_results.json`, pero
 se puede modificar con `--output`. El archivo se genera en la carpeta desde 
 la que se ejecute el comando.
+
+Por defecto `evaluate` utiliza el `run_id` del manifiesto adjunto, pero
+se puede especificar el identificador. Este identificador se usa 
+solo como forma de clasificación dentro de la base de datos en 
+SQLite.
