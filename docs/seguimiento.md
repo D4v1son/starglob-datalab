@@ -278,3 +278,23 @@ todas las instancias de cada anomalía. Actualmente me estoy peleando con DQ_11.
 
 **Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
 conocida e implementar inyección DQ 01 a DQ 05.
+
+## Día 12 - [2026-10-02]
+
+**Horas**: ~5h
+
+**Completado**: Persistencia SQLite (runs/findings/metrics), run_id compartido entre
+generate/audit/evaluate. Implementadas consultas básicas por `run_id` para cada una.
+Ahora los comandos `audit` y `evaluate` guardan los resultados en una base de datos
+SQLite, aquí se utiliza el `run_id` como identificador clave.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/dc84dfcbe59bf95a3547c203ce2fbdae9b04e94e)
+
+**Decisiones**: El auditor es capaz de reconocer anomalías que no están en el 
+manifiesto, es decir, anomalías que se han generado a causa de otras (esto se arrastra
+desde los días anteriores cuando estaba refactorizando).
+
+**Bloqueos**:  DQ_07/DQ_11 sensibles a reformateo de fechas por DQ_09 sobre el mismo 
+campo (ambigüedad día/mes al parsear).
+
+**Siguiente paso**: Dashboard Dia 12 - Implementar resumen, calidad, 
+anomalías y filtros principales. Interfaz navegable con ambos dominios.
