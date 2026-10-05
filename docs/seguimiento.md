@@ -300,3 +300,29 @@ campo (ambigüedad día/mes al parsear).
 
 **Siguiente paso**: Dashboard Dia 12 - Implementar resumen, calidad, 
 anomalías y filtros principales. Interfaz navegable con ambos dominios.
+
+---
+
+## Día 13 - [2026-10-05]
+
+**Completado**: Dashboard Streamlit (`app/dashboard.py`) con las 6
+pantallas obligatorias: Resumen, Calidad (por dimensión, con filtro de
+gravedad), Anomalías (tabla filtrable por código/severidad),
+Evaluación (métricas por código), Continuidad (huecos DQ_11 en
+backups), Ejecuciones (selector run_id con filtro por plantilla).
+Tendencia de F1 entre ejecuciones de la misma plantilla. Consultas
+nuevas en persistence/db.py (list_runs_summary, get_findings_filtered,
+count_findings_by_code).
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/8711ac86f86f7edba0969a0bf8be00a4e91d3b00#diff-7d897a1aa46f018b35e24aa2487470dfe9e6c7d5b951c1cba6361c232313c02b)
+
+**Decisiones**: DIMENSION_BY_CODE mapea DQ_XX a dimensión de calidad.
+generate registra el run con datos reales (seed, rows); audit no pisa
+un run existente.
+
+**Bloqueos**: run_id solo se calculaba dentro del if config.anomalies
+en cmd_generate, impidiendo registrar runs sin anomalías (corregido).
+seed se guardaba como None desde audit (corregido moviendo save_run a
+generate).
+
+**Siguiente paso**: Día 13 - informes de evaluación, exportaciones
+CSV/JSON, prueba de rendimiento.
