@@ -1,30 +1,18 @@
-from starglob_datalab.configuration import load_config
-from starglob_datalab.generation.tickets import generate_tickets
-from starglob_datalab.anomalies.injector import inject_anomalies
-from starglob_datalab.audit.auditor import audit
-from starglob_datalab.evaluation.evaluator import evaluate
-from starglob_datalab.persistence.db import (
-    init_db, save_run, save_findings, save_metrics,
-    get_run, get_findings_by_run, get_metrics_by_run,
-)
+# test_rapido.py
+from starglob_datalab.persistence.db import init_db, list_runs_summary, get_findings_filtered, count_findings_by_code
 
-config = load_config("config/tickets_demo.yaml")
-df_clean = generate_tickets(config)
-df_dirty, entries = inject_anomalies(
-    df_clean.copy(), row_id_col="ticket_id", config=config, run_id="run_test123"
-)
-findings = audit(df_dirty, row_id_col="ticket_id", template="tickets", run_id="run_test123")
-resultado = evaluate(entries, findings, df_clean, row_id_col="ticket_id")
+conn = init_db("data/starglob.db")
 
-conn = init_db("output/starglob.db")
-save_run(conn, run_id="run_test123", template="tickets", config_name="tickets_demo",
-          seed=config.seed, rows=config.rows)
-save_findings(conn, "run_test123", findings)
-save_metrics(conn, "run_test123", resultado["metrics_by_code"], resultado["metrics_global"])
+print("--- Runs ---")
+for r in list_runs_summary(conn):
+    print(r)
 
-print(get_run(conn, "run_test123"))
-print(len(get_findings_by_run(conn, "run_test123")), "hallazgos guardados")
-for m in get_metrics_by_run(conn, "run_test123"):
-    print(m)
+run_id = list_runs_summary(conn)[0]["run_id"]
 
-    
+print("\n--- Conteo por código ---")
+for c in count_findings_by_code(conn, run_id):
+    print(c)
+
+print("\n--- Filtrado por DQ_01 ---")
+for f in get_findings_filtered(conn, run_id, rule_code="DQ_01")[:3]:
+    print(f)

@@ -13,7 +13,7 @@ from starglob_datalab.anomalies.manifest import write_manifest, ManifestEntry
 from starglob_datalab.audit.auditor import audit
 from starglob_datalab.audit.finding import write_findings
 from starglob_datalab.evaluation.evaluator import evaluate
-from starglob_datalab.persistence.db import init_db, save_run, save_findings, save_metrics
+from starglob_datalab.persistence.db import init_db, save_run, save_findings, save_metrics, get_run
 
 
 ROW_ID_COL_BY_TEMPLATE = {
@@ -24,6 +24,7 @@ ROW_ID_COL_BY_TEMPLATE = {
 
 def cmd_generate(args):
     config = load_config(args.config)
+    run_id = args.run_id or f"run_{uuid.uuid4().hex[:8]}"
 
     if config.template == "tickets":
         df_clean = generate_tickets(config)
@@ -41,10 +42,12 @@ def cmd_generate(args):
     df_clean.to_csv(clean_path, index=False)
     print(f"Generadas {len(df_clean)} filas en {clean_path}")
     
+    conn = init_db("data/starglob.db")
+    save_run(conn, run_id, config.template, config.name, config.seed, config.rows)
+    
     if config.anomalies:
         # Cada ejecución, sin importar la semilla, tendrá un identificador único
         # Esto no afecta a la reproducibilidad del dirty_csv ni el manifiesto
-        run_id = args.run_id or f"run_{uuid.uuid4().hex[:8]}"
         df_dirty, entries = inject_anomalies(
             df_clean.copy(), # El generador de anomalías travbaja con una copia para no alterar el original
             row_id_col = row_id_col,
@@ -59,7 +62,7 @@ def cmd_generate(args):
         manifest_path = output_dir / "truth_manifest.jsonl"
         write_manifest(entries, str(manifest_path))
         print(f"{len(entries)} anomalías inyectadas, manifiesto en {manifest_path}")
-        
+    
     # output_path = output_dir / f"{config.template}_clean.csv"
     # df.to_csv(output_path, index=False)
     # 
@@ -89,7 +92,8 @@ def cmd_audit(args):
     write_findings(findings, output_path)
     
     conn = init_db("data/starglob.db")
-    save_run(conn, run_id, args.template, Path(args.input).stem, None, len(df))
+    if get_run(conn, run_id) is None:
+        save_run(conn, run_id, args.template, Path(args.input).stem, None, len(df))
     save_findings(conn, run_id, findings)
 
     print(f"{len(findings)} hallazgos detectados, guardados en {output_path}")
@@ -106,7 +110,7 @@ def cmd_evaluate(args):
             run_id = json.loads(f.readline())["run_id"]
 
     row_id_col = ROW_ID_COL_BY_TEMPLATE[args.template]
-    findings = audit(df_dirty, row_id_col=row_id_col, template=args.template, run_id="run_audit")
+    findings = audit(df_dirty, row_id_col=row_id_col, template=args.template, run_id=run_id)
     resultado = evaluate(entries, findings, df_clean, row_id_col=row_id_col)
 
     with open(args.output or "evaluation_results.json", "w") as f:

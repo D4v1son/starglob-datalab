@@ -39,6 +39,26 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 """
 
+# persistence/db.py — añadir
+DIMENSION_BY_CODE = {
+    "DQ_01": "Completitud",
+    "DQ_02": "Unicidad", 
+    "DQ_03": "Unicidad",
+    "DQ_04": "Validez", 
+    "DQ_05": "Validez", 
+    "DQ_06": "Validez",
+    "DQ_09": "Validez", 
+    "DQ_10": "Validez",
+    "DQ_07": "Consistencia", 
+    "DQ_08": "Consistencia", 
+    "DQ_12": "Consistencia",
+    "DQ_11": "Continuidad",
+    "DQ_13": "Trazabilidad", 
+    "DQ_14": "Trazabilidad",
+}
+
+
+
 def init_db(path: str) -> sqlite3.Connection:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
@@ -128,4 +148,43 @@ def get_findings_by_run(conn, run_id: str) -> list[dict]:
 
 def get_metrics_by_run(conn, run_id: str) -> list[dict]:
     cur = conn.execute("SELECT * FROM metrics WHERE run_id = ?", (run_id,))
+    return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+
+def list_runs_summary(conn) -> list[dict]:
+    """Runs con su F1 global, para el selector del dashboard."""
+    cur = conn.execute("""
+        SELECT r.run_id, 
+            r.template, 
+            r.config_name, 
+            r.seed, r.rows, 
+            r.created_at,
+            m.precision, 
+            m.recall, m.f1
+        FROM runs r
+        LEFT JOIN metrics m ON m.run_id = r.run_id AND m.code = 'GLOBAL'
+        ORDER BY r.created_at DESC
+    """)
+    return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+
+def get_findings_filtered(conn, run_id: str, rule_code: str = None, severity: str = None) -> list[dict]:
+    """Hallazgos de un run, opcionalmente filtrados por código y/o severidad."""
+    query = "SELECT * FROM findings WHERE run_id = ?"
+    params = [run_id]
+    if rule_code:
+        query += " AND rule_code = ?"
+        params.append(rule_code)
+    if severity:
+        query += " AND severity = ?"
+        params.append(severity)
+    cur = conn.execute(query, params)
+    return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
+
+def count_findings_by_code(conn, run_id: str) -> list[dict]:
+    """Conteo de hallazgos agrupado por código, para la tabla resumen."""
+    cur = conn.execute("""
+        SELECT rule_code, severity, COUNT(*) as total
+        FROM findings WHERE run_id = ?
+        GROUP BY rule_code, severity
+        ORDER BY rule_code
+    """, (run_id,))
     return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]

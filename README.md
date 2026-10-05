@@ -159,3 +159,21 @@ Por defecto `evaluate` utiliza el `run_id` del manifiesto adjunto, pero
 se puede especificar el identificador. Este identificador se usa 
 solo como forma de clasificación dentro de la base de datos en 
 SQLite.
+
+### Lanzar aplicación de Streamlit
+
+```powershell
+streamlit run app/dashboard.py
+```
+
+El dashboard se lanza en una nueva pestaña de Google y utiliza 
+los datos persistidos en la base de datos SQLite, que se genera 
+con los otros comandos en caso de no existir en la carpeta 
+`data/starglob.db`. Mapea las anomalías según `DIMENSION_BY_CODE`, 
+que contiene los códigos DQ de cada una y los agrupa en según 
+su dimensión (Completitud, Unicidad, Validez, Consistencia, 
+Continuidad, Trazabilidad).
+
+En caso de revisar los datos que utilizan la plantilla `backups` 
+se muestra la vista de *Continuidad*, que muestra gráficamente 
+las ejecuciones de cada trabajo en el tiempo. 

@@ -279,6 +279,8 @@ todas las instancias de cada anomalía. Actualmente me estoy peleando con DQ_11.
 **Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
 conocida e implementar inyección DQ 01 a DQ 05.
 
+---
+
 ## Día 12 - [2026-10-02]
 
 **Horas**: ~5h
