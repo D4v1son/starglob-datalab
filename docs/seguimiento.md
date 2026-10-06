@@ -326,3 +326,34 @@ generate).
 
 **Siguiente paso**: Día 13 - informes de evaluación, exportaciones
 CSV/JSON, prueba de rendimiento.
+
+---
+
+## Día 14 - [2026-10-06]
+
+**Horas**: ~6h
+
+**Completado**: Prueba de rendimiento RNF03 ejecutada y documentada
+(`docs/rendimiento.md`): 100.000 filas en ~52s (tickets) y ~45s
+(backups), muy por debajo del límite de 3 minutos. Exportación CSV
+añadida junto a JSON para hallazgos (`audit_results.csv`) y métricas
+(`evaluation_results.csv`), cumpliendo RF14. Logging estructurado
+(`logging_config.py`) sustituyendo todos los `print()` del CLI:
+mensajes informativos y errores no controlados (con traceback) se
+registran en `output/generation.log` y en consola, cumpliendo RF15 —
+ningún error se detiene en silencio.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/5f68ec87a53f53758d7e96b526bbe3523c0f01b6)
+
+**Decisiones**: Benchmark medido con `Measure-Command` por comando por
+separado (generar+inyectar, auditar), no como pipeline único, para
+localizar el cuello de botella si lo hubiera. Logging configurado sobre
+el logger con nombre `starglob_datalab` (no el root logger), con
+`FileHandler` (UTF-8) y `StreamHandler` en paralelo.
+
+**Bloqueos**: Caracteres especiales (acentos) mal mostrados en consola
+por la codificación por defecto de PowerShell, no bloqueante, el
+archivo de log sí los guarda correctamente en UTF-8.
+
+**Siguiente paso**: Día 14 - completar README y memoria técnica, probar
+instalación limpia de nuevo, corregir deuda técnica prioritaria antes
+de la defensa.
