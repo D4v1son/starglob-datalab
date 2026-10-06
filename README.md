@@ -117,13 +117,13 @@ python -m starglob_datalab audit \
 | `--output <path>` | No | *(Opcional)* Ruta y nombre del archivo JSON donde se guardarán los resultados. |
 | `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
 
-Con este comando se genera `output/tickets_demo/audit_results.json` con
-las anomalías que el auditor haya encontrado. **CLI `audit` usa `--template` 
-en vez de `--rules`**: nuestras reglas de auditoría están fijas por plantilla 
-en código (`RULES_BY_TEMPLATE`). Actualmente solo existen dos plantillas:
-`tickets` y `backups`. Es posible especificar una nueva ruta y nombre para 
-el archivo mediante `--output`. Por defecto se genera en el nuevo archivo en 
-el mismo directorio que el input.
+Con este comando se genera `output/<dataset>/audit_results.json` y 
+`output/<dataset>/audit_results.csv` con las anomalías que el auditor haya 
+encontrado. **CLI** `audit` usa `--template` en vez de `--rules`: las 
+reglas de auditoría están fijas por plantilla en código (`RULES_BY_TEMPLATE`). 
+Actualmente solo existen dos plantillas: `tickets` y `backups`. Es posible 
+especificar una nueva ruta y nombre para los archivos mediante `--output`. 
+Por defecto los nuevos archivos se generan en el mismo directorio que el `--input`.
 
 Por defecto, la ejecución del auditor está ligada al manifiesto mediante un `run_id`, 
 de esta forma es más fácil comparar los resultados y almacenarlos sin que se 
@@ -151,8 +151,9 @@ python -m starglob_datalab evaluate \
 | `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
 
 
-Por defecto, se generará el autput como `evaluation_results.json`, pero
-se puede modificar con `--output`. El archivo se genera en la carpeta desde 
+Por defecto, se generará el autput como `evaluation_results.json` y 
+`evaluation_results.csv`, pero se puede modificar el nombre de los 
+archivos con `--output`. El archivo se genera en la carpeta desde 
 la que se ejecute el comando.
 
 Por defecto `evaluate` utiliza el `run_id` del manifiesto adjunto, pero

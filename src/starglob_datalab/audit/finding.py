@@ -1,4 +1,5 @@
 import json
+import csv
 
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -26,3 +27,10 @@ def write_findings(findings: list[Finding], path:str) -> None:
     """Escribe los hallazgos como JSON: una lista de objetos."""
     with open(path, "w", encoding="utf-8") as f:
         json.dump([f.model_dump(mode="json") for f in findings], f, indent=2, ensure_ascii=False)
+
+def write_findings_csv(findings: list, path: str) -> None:
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=Finding.model_fields.keys())
+        writer.writeheader()
+        for finding in findings:
+            writer.writerow(finding.model_dump(mode="json"))
