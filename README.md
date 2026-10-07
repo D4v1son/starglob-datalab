@@ -5,6 +5,28 @@ Generador y auditor de datos sintéticos para pruebas de software.
 ## Diseño inicial
 
 ### Arquitectura
+
+
+```
+starglob-datalab/
+├── src/starglob_datalab/
+│   ├── configuration.py
+│   ├── cli.py
+│   ├── logging_config.py
+│   ├── generation/         # tickets.py, backups.py, schemas.py
+│   ├── anomalies/          # injector.py, rules.py, manifest.py
+│   ├── audit/              # auditor.py, rules.py, finding.py
+│   ├── evaluation/         # evaluator.py
+│   └── persistence/        # db.py
+├── app/dashboard.py
+├── config/                 # YAML de ejemplo (tickets_demo.yaml, backups_demo.yaml...)
+├── docs/                   # diccionario_datos, catalogo_anomalias, catalogo_auditoria, rendimiento, seguimiento
+├── tests/{unit,integration}
+├── output/                 # datasets generados (no versionado)
+├── data/starglob.db        # SQLite (no versionado)
+└── pyproject.toml
+```
+
 Módulos separados por responsabilidad, siguiendo el flujo:
 
 Configuración → Generador → Inyector → Auditor → Evaluador → Persistencia → Presentación
@@ -23,9 +45,8 @@ Configuración → Generador → Inyector → Auditor → Evaluador → Persiste
 Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguridad). Ambas requieren identificadores únicos reproducibles por semilla y relaciones temporales coherentes (p. ej. `closed_at` posterior a `created_at`). Como parte de la documentación hay un [catálogo](./docs/diccionario_datos.md) con el schema de los datos representados visualmente.
 
 ### Backlog (siguiendo la planificación de 75h)
-- **Semana 1**: configuración + generador de ambas plantillas + reproducibilidad
-- **Semana 2**: catálogo de anomalías (DQ01–DQ14) + auditor + evaluador
-- **Semana 3**: persistencia SQLite + dashboard + documentación + entrega
+El progreso día a día, con decisiones y bloqueos reales, está en
+[`docs/seguimiento.md`](./docs/seguimiento.md).
 
 ## Anomalías y auditoría
 
@@ -178,3 +199,31 @@ Continuidad, Trazabilidad).
 En caso de revisar los datos que utilizan la plantilla `backups` 
 se muestra la vista de *Continuidad*, que muestra gráficamente 
 las ejecuciones de cada trabajo en el tiempo. 
+
+## Ejemplo rápido (de principio a fin)
+
+```powershell
+python -m starglob_datalab generate --config config/tickets_demo.yaml --run-id demo01
+
+python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets
+
+python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets
+
+streamlit run app/dashboard.py
+```
+
+Tras esto, `output/tickets_demo/` contiene `clean.csv`, `dirty.csv`,
+`truth_manifest.jsonl`, `audit_results.json/csv` y
+`evaluation_results.json/csv`; `data/starglob.db` acumula el historial
+de ejecuciones; y el dashboard muestra `demo01` ya seleccionable.
+
+## Solución de errores frecuentes
+
+| Error | Causa | Solución |
+|---|---|---|
+| `pytest: no se reconoce como comando` | Dependencias de desarrollo no instaladas | `pip install -e ".[dev]"` (comillas incluyen `.` fuera y `dev` dentro) |
+| `ModuleNotFoundError: starglob_datalab` | Paquete no instalado en modo editable | `pip install -e ".[dev]"` desde la raíz del proyecto |
+| `PermissionError` al generar/exportar un CSV | El archivo está abierto en Excel u otro programa | Cierra el archivo y vuelve a ejecutar |
+| `DQ_XX: solo hay N candidatos disponibles` | El `count`/`rate` pedido supera las filas que cumplen la condición de esa anomalía | Reduce el `count` o aumenta `rows` en el YAML |
+| Falsos positivos en DQ_07/DQ_11 al combinar con DQ_09 | Interacción conocida entre anomalías sobre el mismo campo de fecha | Ver limitaciones en [catálogo de anomalías](./docs/catalogo_anomalias.md), no es un fallo |
+| El dashboard no muestra ninguna ejecución | `data/starglob.db` no existe todavía | Ejecuta `generate`+`audit` al menos una vez antes de abrir el dashboard |
