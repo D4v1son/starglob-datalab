@@ -176,3 +176,11 @@ def evaluate(entries: list, findings: list, df_clean, row_id_col: str) -> dict:
         "metrics_global": metricas_globales,
     }
         
+def write_metrics_csv(metrics_by_code: list, metrics_global, path: str) -> None:
+    import csv
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CodeMetrics.model_fields.keys())
+        writer.writeheader()
+        for m in metrics_by_code:
+            writer.writerow(m.model_dump())
+        writer.writerow(metrics_global.model_dump())

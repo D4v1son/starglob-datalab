@@ -1,0 +1,112 @@
+{
+  "metrics_by_code": [
+    {
+      "code": "DQ_01",
+      "true_positives": 20,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_02",
+      "true_positives": 30,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_03",
+      "true_positives": 20,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_04",
+      "true_positives": 15,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_07",
+      "true_positives": 0,
+      "false_positives": 3,
+      "false_negatives": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    },
+    {
+      "code": "DQ_08",
+      "true_positives": 20,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_09",
+      "true_positives": 15,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_10",
+      "true_positives": 15,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    {
+      "code": "DQ_11",
+      "true_positives": 20,
+      "false_positives": 15,
+      "false_negatives": 0,
+      "precision": 0.5714285714285714,
+      "recall": 1.0,
+      "f1": 0.7272727272727273
+    },
+    {
+      "code": "DQ_12",
+      "true_positives": 15,
+      "false_positives": 3,
+      "false_negatives": 0,
+      "precision": 0.8333333333333334,
+      "recall": 1.0,
+      "f1": 0.9090909090909091
+    },
+    {
+      "code": "DQ_14",
+      "true_positives": 15,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    }
+  ],
+  "metrics_global": {
+    "code": "GLOBAL",
+    "true_positives": 185,
+    "false_positives": 21,
+    "false_negatives": 0,
+    "precision": 0.8980582524271845,
+    "recall": 1.0,
+    "f1": 0.9462915601023019
+  }
+}

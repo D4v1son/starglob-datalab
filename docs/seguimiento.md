@@ -278,3 +278,82 @@ todas las instancias de cada anomalía. Actualmente me estoy peleando con DQ_11.
 
 **Siguiente paso**: Día 11 - persistencia: diseñar estructura de verdad 
 conocida e implementar inyección DQ 01 a DQ 05.
+
+---
+
+## Día 12 - [2026-10-02]
+
+**Horas**: ~5h
+
+**Completado**: Persistencia SQLite (runs/findings/metrics), run_id compartido entre
+generate/audit/evaluate. Implementadas consultas básicas por `run_id` para cada una.
+Ahora los comandos `audit` y `evaluate` guardan los resultados en una base de datos
+SQLite, aquí se utiliza el `run_id` como identificador clave.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/dc84dfcbe59bf95a3547c203ce2fbdae9b04e94e)
+
+**Decisiones**: El auditor es capaz de reconocer anomalías que no están en el 
+manifiesto, es decir, anomalías que se han generado a causa de otras (esto se arrastra
+desde los días anteriores cuando estaba refactorizando).
+
+**Bloqueos**:  DQ_07/DQ_11 sensibles a reformateo de fechas por DQ_09 sobre el mismo 
+campo (ambigüedad día/mes al parsear).
+
+**Siguiente paso**: Dashboard Dia 12 - Implementar resumen, calidad, 
+anomalías y filtros principales. Interfaz navegable con ambos dominios.
+
+---
+
+## Día 13 - [2026-10-05]
+
+**Completado**: Dashboard Streamlit (`app/dashboard.py`) con las 6
+pantallas obligatorias: Resumen, Calidad (por dimensión, con filtro de
+gravedad), Anomalías (tabla filtrable por código/severidad),
+Evaluación (métricas por código), Continuidad (huecos DQ_11 en
+backups), Ejecuciones (selector run_id con filtro por plantilla).
+Tendencia de F1 entre ejecuciones de la misma plantilla. Consultas
+nuevas en persistence/db.py (list_runs_summary, get_findings_filtered,
+count_findings_by_code).
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/8711ac86f86f7edba0969a0bf8be00a4e91d3b00#diff-7d897a1aa46f018b35e24aa2487470dfe9e6c7d5b951c1cba6361c232313c02b)
+
+**Decisiones**: DIMENSION_BY_CODE mapea DQ_XX a dimensión de calidad.
+generate registra el run con datos reales (seed, rows); audit no pisa
+un run existente.
+
+**Bloqueos**: run_id solo se calculaba dentro del if config.anomalies
+en cmd_generate, impidiendo registrar runs sin anomalías (corregido).
+seed se guardaba como None desde audit (corregido moviendo save_run a
+generate).
+
+**Siguiente paso**: Día 13 - informes de evaluación, exportaciones
+CSV/JSON, prueba de rendimiento.
+
+---
+
+## Día 14 - [2026-10-06]
+
+**Horas**: ~6h
+
+**Completado**: Prueba de rendimiento RNF03 ejecutada y documentada
+(`docs/rendimiento.md`): 100.000 filas en ~52s (tickets) y ~45s
+(backups), muy por debajo del límite de 3 minutos. Exportación CSV
+añadida junto a JSON para hallazgos (`audit_results.csv`) y métricas
+(`evaluation_results.csv`), cumpliendo RF14. Logging estructurado
+(`logging_config.py`) sustituyendo todos los `print()` del CLI:
+mensajes informativos y errores no controlados (con traceback) se
+registran en `output/generation.log` y en consola, cumpliendo RF15 —
+ningún error se detiene en silencio.
+[COMMIT](https://github.com/D4v1son/starglob-datalab/commit/5f68ec87a53f53758d7e96b526bbe3523c0f01b6)
+
+**Decisiones**: Benchmark medido con `Measure-Command` por comando por
+separado (generar+inyectar, auditar), no como pipeline único, para
+localizar el cuello de botella si lo hubiera. Logging configurado sobre
+el logger con nombre `starglob_datalab` (no el root logger), con
+`FileHandler` (UTF-8) y `StreamHandler` en paralelo.
+
+**Bloqueos**: Caracteres especiales (acentos) mal mostrados en consola
+por la codificación por defecto de PowerShell, no bloqueante, el
+archivo de log sí los guarda correctamente en UTF-8.
+
+**Siguiente paso**: Día 14 - completar README y memoria técnica, probar
+instalación limpia de nuevo, corregir deuda técnica prioritaria antes
+de la defensa.

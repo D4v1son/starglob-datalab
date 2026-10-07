@@ -9,33 +9,33 @@ output_dir: output/tickets_demo
 
 anomalies:
   - code: DQ_01
-    count: 100
+    count: 25
     fields: [summary]
   - code: DQ_02
-    count: 100
+    count: 15
   - code: DQ_03
-    count: 100
+    count: 10
   - code: DQ_04
-    count: 100
+    count: 15
     fields: [priority]
   - code: DQ_05
-    count: 100
+    count: 20
     fields: [sla_target_minutes]
   - code: DQ_06
-    count: 100
+    count: 15
     fields: [satisfaction_score]
   - code: DQ_07
-    count: 100
+    count: 15
     fields: [closed_at, created_at]
   - code: DQ_09
-    count: 100
+    count: 15
     fields: [created_at]
   - code: DQ_10
-    count: 100
+    count: 20
     fields: [priority]
   - code: DQ_13
-    count: 100
+    count: 15
     fields: [technician_id]
   - code: DQ_14
-    count: 100
+    count: 15
     fields: [summary]

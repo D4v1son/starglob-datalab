@@ -5,6 +5,28 @@ Generador y auditor de datos sintéticos para pruebas de software.
 ## Diseño inicial
 
 ### Arquitectura
+
+
+```
+starglob-datalab/
+├── src/starglob_datalab/
+│   ├── configuration.py
+│   ├── cli.py
+│   ├── logging_config.py
+│   ├── generation/         # tickets.py, backups.py, schemas.py
+│   ├── anomalies/          # injector.py, rules.py, manifest.py
+│   ├── audit/              # auditor.py, rules.py, finding.py
+│   ├── evaluation/         # evaluator.py
+│   └── persistence/        # db.py
+├── app/dashboard.py
+├── config/                 # YAML de ejemplo (tickets_demo.yaml, backups_demo.yaml...)
+├── docs/                   # diccionario_datos, catalogo_anomalias, catalogo_auditoria, rendimiento, seguimiento
+├── tests/{unit,integration}
+├── output/                 # datasets generados (no versionado)
+├── data/starglob.db        # SQLite (no versionado)
+└── pyproject.toml
+```
+
 Módulos separados por responsabilidad, siguiendo el flujo:
 
 Configuración → Generador → Inyector → Auditor → Evaluador → Persistencia → Presentación
@@ -23,9 +45,8 @@ Configuración → Generador → Inyector → Auditor → Evaluador → Persiste
 Dos plantillas: `tickets` (incidencias de soporte) y `backups` (copias de seguridad). Ambas requieren identificadores únicos reproducibles por semilla y relaciones temporales coherentes (p. ej. `closed_at` posterior a `created_at`). Como parte de la documentación hay un [catálogo](./docs/diccionario_datos.md) con el schema de los datos representados visualmente.
 
 ### Backlog (siguiendo la planificación de 75h)
-- **Semana 1**: configuración + generador de ambas plantillas + reproducibilidad
-- **Semana 2**: catálogo de anomalías (DQ01–DQ14) + auditor + evaluador
-- **Semana 3**: persistencia SQLite + dashboard + documentación + entrega
+El progreso día a día, con decisiones y bloqueos reales, está en
+[`docs/seguimiento.md`](./docs/seguimiento.md).
 
 ## Anomalías y auditoría
 
@@ -84,12 +105,13 @@ python -m starglob_datalab --version
 
 ### Generar un dataset limpio:
 ```powershell
-python -m starglob_datalab generate --config config/<dataset>.yaml
-
-# ejemplo:
-python -m starglob_datalab generate --config config/tickets_demo.yaml
-python -m starglob_datalab generate --config config/backups_demo.yaml
+python -m starglob_datalab generate --config config/<dataset>.yaml  [--run-id <run_id>]
 ```
+
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--config <path>` | **Sí** | Ruta al archivo de configuración YAML del dataset (`config/<dataset>.yaml`). |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
 
 Esto crea `output/tickets_demo/clean.csv`, reproducible: la misma
 configuración y semilla siempre produce el mismo resultado. Además, de haber 
@@ -97,21 +119,32 @@ añadido anomalías a la generación, se generará un archivo
 `output/tickets_demo/dirty.csv` y un manifesto con los cambios de cada 
 anomalía en `output/tickets_demo/truth_manifest.jsonl`.
 
+Se puede especificar un identificador particular para cada ejecución. De 
+no hacerlo se generará un identificador propio.
+
 ### Auditar un dataset:
 ```powershell
-python -m starglob_datalab audit --input output/<dataset>/dirty.csv --template <tickets|backups> [--output <direccion/nombre>.json] [--run-id <run_id>]
-
-# ejemplo:
-python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets [--output <direccion/nombre>.json] [--run-id <run_id>]
-python -m starglob_datalab audit --input output/backups_demo/dirty.csv --template backups [--output <direccion/nombre>.json] [--run-id <run_id>]
+python -m starglob_datalab audit \
+  --input output/<dataset>/dirty.csv \
+  --template <tickets|backups> \
+  [--output <direccion/nombre>.json] \
+  [--run-id <run_id>]
 ```
-Con este comando se genera `output/tickets_demo/audit_results.json` con
-las anomalías que el auditor haya encontrado. **CLI `audit` usa `--template` 
-en vez de `--rules`**: nuestras reglas de auditoría están fijas por plantilla 
-en código (`RULES_BY_TEMPLATE`). Actualmente solo existen dos plantillas:
-`tickets` y `backups`. Es posible especificar una nueva ruta y nombre para 
-el archivo mediante `--output`. Por defecto se genera en el nuevo archivo en 
-el mismo directorio que el input.
+
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--input <path>` | **Sí** | Ruta al CSV de entrada con los datos a auditar (`output/<dataset>/dirty.csv`). |
+| `--template <tipo>` | **Sí** | Tipo de plantilla a utilizar: `tickets` o `backups`. |
+| `--output <path>` | No | *(Opcional)* Ruta y nombre del archivo JSON donde se guardarán los resultados. |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
+
+Con este comando se genera `output/<dataset>/audit_results.json` y 
+`output/<dataset>/audit_results.csv` con las anomalías que el auditor haya 
+encontrado. **CLI** `audit` usa `--template` en vez de `--rules`: las 
+reglas de auditoría están fijas por plantilla en código (`RULES_BY_TEMPLATE`). 
+Actualmente solo existen dos plantillas: `tickets` y `backups`. Es posible 
+especificar una nueva ruta y nombre para los archivos mediante `--output`. 
+Por defecto los nuevos archivos se generan en el mismo directorio que el `--input`.
 
 Por defecto, la ejecución del auditor está ligada al manifiesto mediante un `run_id`, 
 de esta forma es más fácil comparar los resultados y almacenarlos sin que se 
@@ -121,13 +154,76 @@ identificador o de existir un manifiesto, se generará un nuevo identificador.
 
 ### Evaluar los resultados:
 ```powershell
-python -m starglob_datalab evaluate --clean output/<dataset>/clean.csv --dirty output/<dataset>/dirty.csv --manifest output/<dataset>/truth_manifest.jsonl --template <tickets|backups> [--output <nombre>.json]
+python -m starglob_datalab evaluate \
+    --clean output/<dataset>/clean.csv \
+    --dirty output/<dataset>/dirty.csv \
+    --manifest output/<dataset>/truth_manifest.jsonl \
+    --template <tickets|backups> \
+    [--output <nombre>.json] \
+    [--run-id <run_id>]
+```
+| Parámetro | Requerido | Descripción |
+| --- | --- | --- |
+| `--clean <path>` | **Sí** | Ruta al CSV de datos limpios (`output/<dataset>/clean.csv`). |
+| `--dirty <path>` | **Sí** | Ruta al CSV de datos con errores (`output/<dataset>/dirty.csv`). |
+| `--manifest <path>` | **Sí** | Ruta al manifiesto JSONL (`output/<dataset>/truth_manifest.jsonl`). |
+| `--template <tipo>` | **Sí** | Tipo de plantilla a utilizar: `tickets` o `backups`. |
+| `--output <nombre>` | No | *(Opcional)* Nombre o ruta del archivo JSON de salida. |
+| `--run-id <id>` | No | *(Opcional)* Identificador único para la ejecución actual. |
 
-# ejemplo:
-python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets [--output <nombre>.json]
-python -m starglob_datalab evaluate --clean output/backups_demo/clean.csv --dirty output/backups_demo/dirty.csv --manifest output/backups_demo/truth_manifest.jsonl --template backups [--output <nombre>.json]
+
+Por defecto, se generará el autput como `evaluation_results.json` y 
+`evaluation_results.csv`, pero se puede modificar el nombre de los 
+archivos con `--output`. El archivo se genera en la carpeta desde 
+la que se ejecute el comando.
+
+Por defecto `evaluate` utiliza el `run_id` del manifiesto adjunto, pero
+se puede especificar el identificador. Este identificador se usa 
+solo como forma de clasificación dentro de la base de datos en 
+SQLite.
+
+### Lanzar aplicación de Streamlit
+
+```powershell
+streamlit run app/dashboard.py
 ```
 
-Por defecto, se generará el autput como `evaluation_results.json`, pero
-se puede modificar con `--output`. El archivo se genera en la carpeta desde 
-la que se ejecute el comando.
+El dashboard se lanza en una nueva pestaña de Google y utiliza 
+los datos persistidos en la base de datos SQLite, que se genera 
+con los otros comandos en caso de no existir en la carpeta 
+`data/starglob.db`. Mapea las anomalías según `DIMENSION_BY_CODE`, 
+que contiene los códigos DQ de cada una y los agrupa en según 
+su dimensión (Completitud, Unicidad, Validez, Consistencia, 
+Continuidad, Trazabilidad).
+
+En caso de revisar los datos que utilizan la plantilla `backups` 
+se muestra la vista de *Continuidad*, que muestra gráficamente 
+las ejecuciones de cada trabajo en el tiempo. 
+
+## Ejemplo rápido (de principio a fin)
+
+```powershell
+python -m starglob_datalab generate --config config/tickets_demo.yaml --run-id demo01
+
+python -m starglob_datalab audit --input output/tickets_demo/dirty.csv --template tickets
+
+python -m starglob_datalab evaluate --clean output/tickets_demo/clean.csv --dirty output/tickets_demo/dirty.csv --manifest output/tickets_demo/truth_manifest.jsonl --template tickets
+
+streamlit run app/dashboard.py
+```
+
+Tras esto, `output/tickets_demo/` contiene `clean.csv`, `dirty.csv`,
+`truth_manifest.jsonl`, `audit_results.json/csv` y
+`evaluation_results.json/csv`; `data/starglob.db` acumula el historial
+de ejecuciones; y el dashboard muestra `demo01` ya seleccionable.
+
+## Solución de errores frecuentes
+
+| Error | Causa | Solución |
+|---|---|---|
+| `pytest: no se reconoce como comando` | Dependencias de desarrollo no instaladas | `pip install -e ".[dev]"` (comillas incluyen `.` fuera y `dev` dentro) |
+| `ModuleNotFoundError: starglob_datalab` | Paquete no instalado en modo editable | `pip install -e ".[dev]"` desde la raíz del proyecto |
+| `PermissionError` al generar/exportar un CSV | El archivo está abierto en Excel u otro programa | Cierra el archivo y vuelve a ejecutar |
+| `DQ_XX: solo hay N candidatos disponibles` | El `count`/`rate` pedido supera las filas que cumplen la condición de esa anomalía | Reduce el `count` o aumenta `rows` en el YAML |
+| Falsos positivos en DQ_07/DQ_11 al combinar con DQ_09 | Interacción conocida entre anomalías sobre el mismo campo de fecha | Ver limitaciones en [catálogo de anomalías](./docs/catalogo_anomalias.md), no es un fallo |
+| El dashboard no muestra ninguna ejecución | `data/starglob.db` no existe todavía | Ejecuta `generate`+`audit` al menos una vez antes de abrir el dashboard |

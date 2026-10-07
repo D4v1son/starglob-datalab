@@ -1,0 +1,18 @@
+name: backups_bench
+template: backups
+seed: 1
+rows: 100000
+period:
+  start_date: 2026-01-01
+  end_date: 2026-12-31
+output_dir: output/bench_backups
+
+anomalies:
+  - code: DQ_01
+    count: 500
+    fields: [job_name]
+  - code: DQ_02
+    count: 300
+  - code: DQ_04
+    count: 500
+    fields: [status]
