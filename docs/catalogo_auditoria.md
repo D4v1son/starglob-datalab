@@ -26,7 +26,7 @@ detectar formatos inconsistentes (DQ_09) antes de que pandas los
 | DQ_13 | Referencia huérfana | error | <ul><li>- [x] Implementado</li></ul> |
 | DQ_14 | Codificación dañada | warning | <ul><li>- [x] Implementado</li></ul> |
 
-## Limitaciones conocidas (pendientes de resolver en la evaluación)
+## Limitaciones conocidas
 
 - **DQ_03**: el auditor no puede saber cuál de las dos filas con ID
   repetido era la "objetivo" originalmente (esa información solo la
@@ -34,9 +34,13 @@ detectar formatos inconsistentes (DQ_09) antes de que pandas los
   propio ID duplicado, no la identidad original de la fila objetivo. El
   emparejamiento en el evaluador deberá hacerse por **valor duplicado**,
   no por `row_id`.
-- **DQ_11**: al detectar una *ausencia* de ejecución, no hay una fila
-  concreta que señalar. El hallazgo se emite con `row_id=None`; el
-  emparejamiento deberá hacerse por (cliente, trabajo, fecha esperada).
+- **DQ_11**: al detectar una *ausencia*, no hay fila que señalar. El
+  hallazgo usa `row_id = cliente|trabajo` y `observed_value` = fecha
+  exacta ausente, con un hallazgo por cada fecha. El evaluador lo
+  empareja por cliente + trabajo + fecha.
+- **DQ_07/DQ_12 y fechas reformateadas por DQ_09**: el auditor puede
+  malinterpretar `DD/MM/YYYY` con día ≤12 y emitir falsos positivos
+  (limitación aceptada).
 
 ## Decisiones propias
 
@@ -45,8 +49,8 @@ detectar formatos inconsistentes (DQ_09) antes de que pandas los
 - **El auditor recibe fechas como texto**, sin `parse_dates`, para
   poder detectar DQ_09 (formato inconsistente) antes de que pandas
   normalice el valor al leer el CSV.
-- **`Finding.row_id` es opcional**: DQ_11 (hueco temporal) detecta una
-  ausencia, no una fila concreta.
+- **`Finding.row_id` es opcional en el modelo**, pero ninguna regla lo
+  emite vacío: DQ_11 usa la clave compuesta `cliente|trabajo`.
 - **DQ_07/DQ_12 del auditor comprueban pares de campos fijos**
   (`CHRONOLOGY_PAIRS_BY_TEMPLATE`), no los que se hayan usado realmente
   al inyectar - el auditor es más exhaustivo que la instancia concreta
@@ -73,8 +77,9 @@ Excluye las filas ya cubiertas por DQ_02 (duplicados exactos), y marca
 los IDs que se repiten entre filas que, por lo demás, son distintas.
 
 ### DQ_04 - Valor fuera del catálogo
-Reutiliza `FIELD_ENUMS_BY_TEMPLATE` (el mismo catálogo que usa el
-inyector) para comprobar que cada valor categórico pertenece al enum.
+Reutiliza `FIELD_ENUMS_BY_TEMPLATE` del inyector. Ignora los valores
+que solo difieren del catálogo en espacios o capitalización (los cubre
+DQ_10), para no duplicar el hallazgo.
 
 ### DQ_05 - Valor no numérico
 Intenta convertir a `float` los campos de `NUMERIC_FIELDS_BY_TEMPLATE`;
@@ -101,15 +106,19 @@ Comprueba con una expresión regular que cada fecha (como texto) siga el
 formato ISO 8601. Requiere que el DataFrame se cargue sin `parse_dates`.
 
 ### DQ_10 - Espacios o capitalización
-Para campos categóricos: si el valor no coincide con el catálogo pero,
-tras limpiar espacios y pasar a minúsculas, sí coincide, se marca como
-formato inconsistente (nunca se solapa con DQ_04).
+Detecta formato inconsistente en dos tipos de campo. En categóricos: el
+valor no coincide con el catálogo, pero sí tras quitar espacios y pasar
+a minúsculas. En campos con patrón de identificador
+(`ID_PATTERNS_BY_TEMPLATE`): no cumple el patrón, pero sí tras quitar
+espacios y pasar a mayúsculas. No se solapa con DQ_04.
 
 ### DQ_11 - Hueco temporal
-Solo aplica a `backups`. Para cada trabajo recurrente (cliente +
-job_name) con al menos 3 ejecuciones, infiere la frecuencia esperada
-(el intervalo más común entre ejecuciones consecutivas) y marca
-cualquier hueco de al menos el doble de esa frecuencia.
+Solo aplica a `backups`. Para cada trabajo con al menos 3 ejecuciones,
+infiere la frecuencia esperada (moda de los intervalos). Si entre dos
+ejecuciones consecutivas hay al menos el doble de esa frecuencia, emite
+un hallazgo por cada fecha esperada que falta. Dos ejecuciones
+consecutivas eliminadas producen dos hallazgos, y el emparejamiento con
+el manifiesto es 1:1.
 
 ### DQ_12 - Duración desproporcionada
 Usa los mismos pares de `CHRONOLOGY_PAIRS_BY_TEMPLATE`, marcando
@@ -128,7 +137,11 @@ secuencias típicas de mala codificación que también usa el inyector
 para simularla.
 
 ## Evaluación
-DQ_03 se empareja por valor duplicado (altered_value/observed_value),
-no por row_id. DQ_11 se empareja por (client_id|job_name) + fecha
-eliminada dentro del rango del hueco reportado, usando clean.csv.
-Métricas con denominador 0 devuelven 0.0.
+- Regla general: igualdad de fila, campo y regla.
+- DQ_03: se empareja por valor duplicado (`altered_value` del
+  manifiesto frente al valor observado del hallazgo), no por `row_id`.
+- DQ_11: se empareja por (`cliente|trabajo`, fecha exacta ausente); el
+  evaluador recupera cliente y trabajo de `clean.csv` a partir del
+  `row_id` del manifiesto.
+- Las métricas con denominador 0 devuelven 0.0. Un código con 0/0/0
+  significa que no se probó en esa ejecución, no que el auditor falle.

@@ -1,6 +1,6 @@
 [project]
 name = "starglob-datalab"
-version = "0.5.0"
+version = "1.0.0"
 description = "Generador y auditor de datos sintéticos para pruebas de software"
 requires-python = ">=3.10"
 dependencies = [

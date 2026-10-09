@@ -51,10 +51,11 @@ con la estructura definida en el Anexo B del encargo.
   hasta ahora; aplicar estas anomalías a un campo nuevo requiere
   añadirlo primero al diccionario correspondiente, o falla
   explícitamente.
-- **DQ10 no descarta colisiones con el valor original**: en campos con
-  capitalización natural (texto libre), una variante podría coincidir
-  por casualidad con el original; se acepta como caso límite poco
-  probable con los campos usados actualmente.
+- **DQ_10 solo aplica a campos con formato fijo** (categóricos o
+  identificadores con patrón conocido), no a texto libre (`summary`,
+  `error_message`) ni al identificador de fila. Además, descarta las
+  variantes que coincidan con el valor original (por ejemplo, `.upper()`
+  sobre un ID ya en mayúsculas), que no constituirían ninguna anomalía.
 - **Interacciones entre anomalías**: se mantiene la granularidad por
   celda (varias anomalías pueden coexistir en una fila si tocan campos
   distintos). Se descartó bloquear por fila entera porque el documento
@@ -77,6 +78,12 @@ con la estructura definida en el Anexo B del encargo.
   generado es ASCII y no cambiaría).
 - **DQ_11 y DQ_12 no se aplican a tickets, y DQ_13 tampoco a backups**,
   por no tener sentido de negocio en esa plantilla.
+- **`"n/a"` descartado como valor inválido candidato (DQ_04)**: pandas
+  lo interpreta como nulo al leer el CSV, convirtiendo la anomalía en
+  un falso DQ_01 tras el roundtrip de exportación/lectura.
+- **DQ_03 solo elige filas libres** (`ctx.fila_libre`) y bloquea tanto
+  la fila objetivo como la donante, para que ninguna otra anomalía
+  altere después una fila cuyo identificador visible ha cambiado.
 
 ## Detalle por anomalía
 
@@ -163,11 +170,11 @@ dato corrupto.
 
 ### DQ_10 &rarr; Espacios o capitalización
 
-Añade ruido superficial a un valor de texto o categórico: espacios al
-inicio/final, o cambios de capitalización (mayúsculas, solo primera
-letra). El valor sigue siendo semánticamente el mismo para un lector
-humano, pero rompe comparaciones exactas de texto. No se comprueba si
-la variante generada coincide por casualidad con el valor original.
+Añade ruido superficial (espacios al inicio o final, mayúsculas, solo
+primera letra en mayúscula) a un campo con formato fijo: categórico o
+identificador con patrón conocido. Falla explícitamente si se pide
+sobre texto libre o sobre el identificador de fila. Descarta las
+variantes idénticas al valor original.
 
 ### DQ_11 &rarr; Hueco temporal
 
@@ -240,8 +247,9 @@ de texto.
   también su celda de referencia (`created_at`, `status`,
   `started_at`), para que otra anomalía no la reformatee o altere
   después.
-- **Filas donantes (DQ_03):** la fila cuyo ID se copia queda bloqueada,
-  para que DQ_11 no la elimine ni DQ_02 la duplique.
+- **Filas objetivo y donante (DQ_03):** ambas quedan bloqueadas, para
+  que DQ_11 no las elimine, DQ_02 no las duplique y ninguna anomalía de
+  celda las altere después.
 - **Índices nuevos (DQ_02):** las filas duplicadas reciben índices
   desde un contador propio (`ctx.next_index`), sin renumerar las
   existentes ni reutilizar el índice de una fila eliminada por DQ_11.
@@ -255,7 +263,7 @@ de texto.
   esperable al generar datos con múltiples tipos de problemas de
   calidad coexistiendo, similar a lo que ocurriría en datos reales.
 - **Ambigüedad día/mes en fechas reformateadas (DQ_07, DQ_12)**:
-  `pd.Timestamp` interpreta por defecto `DD/MM/YYYY` como mes/día
-  cuando el día es ≤12, generando desplazamientos de fecha silenciosos
-  al combinar con DQ_09. Corregido usando `pd.to_datetime(...,
-  dayfirst=True)` en ambas reglas.
+  `pd.Timestamp` interpreta por defecto `DD/MM/YYYY` como mes/día cuando
+  el día es ≤12, generando falsos positivos en el auditor al combinar
+  con DQ_09. Un intento de corregirlo con `dayfirst=True` introdujo una
+  regresión y se revirtió; la limitación queda documentada y aceptada.
